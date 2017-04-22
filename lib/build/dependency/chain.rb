@@ -68,7 +68,7 @@ module Build
 				
 				@parent = Target.new("<top>")
 				
-				expand_all(@targets, @parent)
+				expand_all
 			end
 			
 			attr :selection
@@ -101,9 +101,15 @@ module Build
 			
 			private
 			
-			def expand_all(targets = @targets, parent = TOP)
+			def expand?(target)
+				# puts "Should I expand target: #{target} - it's #{target.private? ? 'private' : 'not private'} and #{@targets.include?(target) ? 'in' : 'not in'} @targets"
+				
+				!target.private? || @targets.include?(target)
+			end
+			
+			def expand_all(targets = @targets, parent = TOP, force = true)
 				targets.each do |target|
-					expand(Target[target], parent)
+					expand(Target[target], parent, force)
 				end
 			end
 			
@@ -129,16 +135,16 @@ module Build
 			def find_provider(target, parent)
 				# Mostly, only one package will satisfy the target...
 				viable_providers = @providers.select{|provider| provider.provides? target}
-
+				
 				# puts"** Found #{viable_providers.collect(&:name).join(', ')} viable providers."
-
+				
 				if viable_providers.size > 1
 					# ... however in some cases (typically where aliases are being used) an explicit selection must be made for the build to work correctly.
 					explicit_providers = filter_by_selection(viable_providers)
 					
 					# puts"** Filtering to #{explicit_providers.collect(&:name).join(', ')} explicit providers."
 					
-					if explicit_providers.size != 1 and !ignore_priority?
+					if explicit_providers.size != 1 && !ignore_priority?
 						# If we were unable to select a single package, we may use the priority to limit the number of possible options:
 						explicit_providers = viable_providers if explicit_providers.empty?
 						
@@ -162,8 +168,10 @@ module Build
 				end
 			end
 			
-			def expand(target, parent)
-				# puts"** Expanding #{target} from #{parent}"
+			def expand(target, parent, force)
+				return unless force || expand?(target)
+				
+				# puts "** Expanding #{target} from #{parent}"
 				
 				if @resolved.include?(target)
 					# puts"** Already resolved target!"
@@ -172,7 +180,7 @@ module Build
 				end
 				
 				provider = find_provider(target, parent)
-
+				
 				if provider == nil
 					# puts"** Couldn't find provider -> unresolved"
 					@unresolved << [target, parent]
@@ -189,16 +197,18 @@ module Build
 				if Alias === provision
 					# puts"** Resolving alias #{provision} (#{provision.targets.inspect})"
 					
-					expand_all(provision.targets, provider) unless target.private?
+					# We force expand all children of any top level target:
+					# TODO: While this works, it feels a bit messy.
+					expand_all(provision.targets, provider, parent.equal?(TOP))
 				end
-
+				
 				# puts"** Checking for #{provider.inspect} in #{resolved.inspect}"
 				unless @resolved.include?(provider)
 					# We are now satisfying the provider by expanding all its own targets:
 					@resolved << provider
-
+					
 					# Make sure we satisfy the provider's targets first:
-					expand_all(provider.targets, provider) unless target.private?
+					expand_all(provider.targets, provider, parent.equal?(TOP))
 					
 					# puts"** Appending #{target} -> ordered"
 					

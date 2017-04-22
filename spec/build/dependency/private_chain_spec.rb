@@ -39,6 +39,13 @@ RSpec.describe Build::Dependency::Chain do
 		end
 	end
 	
+	let(:d) do
+		Package.new('d').tap do |package|
+			package.provides 'd'
+			package.depends 'c'
+		end
+	end
+	
 	it "should resolve dependency" do
 		chain = described_class.expand([], ['a'], [a, b, c])
 		expect(chain.ordered.collect(&:first)).to be == [a]
@@ -52,5 +59,10 @@ RSpec.describe Build::Dependency::Chain do
 	it "shouldn't follow nested private dependencies" do
 		chain = described_class.expand([], ['c'], [a, b, c])
 		expect(chain.ordered.collect(&:first)).to be == [b, c]
+	end
+	
+	it "shouldn't follow direct private dependencies" do
+		chain = described_class.expand([], ['d'], [a, b, c, d])
+		expect(chain.ordered.collect(&:first)).to be == [c, d]
 	end
 end
