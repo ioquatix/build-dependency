@@ -18,35 +18,21 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-class BasicDependency
-	include Build::Dependency
-	
-	def initialize(name = nil)
-		@name = name
-	end
-	
-	attr :name
-	
-	def inspect
-		"<BasicDependency:#{@name}>"
-	end
-end
-
 describe Build::Dependency do
 	it "Should resolve dependency chain" do
-		a = BasicDependency.new
+		a = Package.new
 		
 		a.provides 'apple' do
 			fruit ['apple']
 		end
 		
-		b = BasicDependency.new
+		b = Package.new
 		
 		b.provides 'orange' do
 			fruit ['orange']
 		end
 		
-		c = BasicDependency.new
+		c = Package.new
 		
 		c.provides 'fruit-juice' do
 			juice ['ice', 'cold']
@@ -58,7 +44,7 @@ describe Build::Dependency do
 		chain = Build::Dependency.chain([], ['fruit-juice'], [a, b, c])
 		expect(chain.ordered.collect(&:first)).to be == [a, b, c]
 		
-		d = BasicDependency.new
+		d = Package.new
 		
 		d.provides 'pie' do
 		end
@@ -72,14 +58,14 @@ describe Build::Dependency do
 	end
 	
 	it "should report conflicts" do
-		apple = BasicDependency.new('apple')
+		apple = Package.new('apple')
 		apple.provides 'apple'
 		apple.provides 'fruit'
 	
-		bananna = BasicDependency.new('bananna')
+		bananna = Package.new('bananna')
 		bananna.provides 'fruit'
 	
-		salad = BasicDependency.new('salad')
+		salad = Package.new('salad')
 		salad.depends 'fruit'
 		salad.provides 'salad'
 	
@@ -93,15 +79,15 @@ describe Build::Dependency do
 	end
 	
 	it "should resolve aliases" do
-		apple = BasicDependency.new('apple')
+		apple = Package.new('apple')
 		apple.provides 'apple'
 		apple.provides :fruit => 'apple'
 	
-		bananna = BasicDependency.new('bananna')
+		bananna = Package.new('bananna')
 		bananna.provides 'bananna'
 		bananna.provides :fruit => 'bananna'
 	
-		salad = BasicDependency.new('salad')
+		salad = Package.new('salad')
 		salad.depends :fruit
 		salad.provides 'salad'
 	
@@ -115,11 +101,11 @@ describe Build::Dependency do
 	end
 	
 	it "should select dependencies with high priority" do
-		bad_apple = BasicDependency.new('bad_apple')
+		bad_apple = Package.new('bad_apple')
 		bad_apple.provides 'apple'
 		bad_apple.priority = 20
 		
-		good_apple = BasicDependency.new('good_apple')
+		good_apple = Package.new('good_apple')
 		good_apple.provides 'apple'
 		good_apple.priority = 40
 		
@@ -133,18 +119,18 @@ describe Build::Dependency do
 	end
 	
 	it "should expose direct dependencies" do
-		system = BasicDependency.new('linux')
+		system = Package.new('linux')
 		system.provides 'linux'
 		system.provides 'clang'
 		system.provides system: 'linux'
 		system.provides compiler: 'clang'
 		
-		library = BasicDependency.new('library')
+		library = Package.new('library')
 		library.provides 'library'
 		library.depends :system
 		library.depends :compiler
 		
-		application = BasicDependency.new('application')
+		application = Package.new('application')
 		application.provides 'application'
 		application.depends :compiler
 		application.depends 'library'

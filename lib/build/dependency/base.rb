@@ -26,29 +26,19 @@ module Build
 			klass.include(Unit)
 		end
 		
+		# A provision is a thing which satisfies a target.
 		Provision = Struct.new(:value)
 		
 		Alias = Struct.new(:dependencies)
 		
 		Resolution = Struct.new(:provider, :name)
 		
-		# # A query against the set of available provisions, e.g.
-		# # Target.new('package-name', version: '>= 3.0.0')
-		# Target = Struct.new(:name, :options)
-		# 
-		# Depends = Struct.new(:name) do
-		# 	def initialize(name, **options)
-		# 		super(name)
-		# 		@options = options
-		# 	end
-		# 	
-		# 	attr :options
-		# 	
-		# 	def private?
-		# 		@options[:private]
-		# 	end
-		# end
-		# 
+		Target = Struct.new(:name, :options) do
+			def private?
+				options[:private]
+			end
+		end
+		
 		module Unit
 			def freeze
 				return unless frozen?
@@ -69,14 +59,14 @@ module Build
 				@priority ||= 0
 			end
 			
-			# @return Hash<String, Provision> a hash of named provisions.
+			# @return Hash<String, Provision> a table of named provisions.
 			def provisions
 				@provisions ||= {}
 			end
 			
 			# @return Set<Dependency>
-			def dependencies
-				@dependencies ||= Set.new
+			def targets
+				@targets ||= {}
 			end
 			
 			# Does this unit provide the named thing?
@@ -99,12 +89,18 @@ module Build
 				end
 			end
 			
-			def depends(name, **options)
-				dependencies << name # Depends.new(name, **options)
+			def dependencies
+				targets.keys
+			end
+			
+			def depends(*names, **options)
+				names.each do |name|
+					targets[name] = Target.new(name, **options)
+				end
 			end
 			
 			def depends?(name)
-				dependencies.include? name
+				targets.include?(name)
 			end
 		end
 	end
