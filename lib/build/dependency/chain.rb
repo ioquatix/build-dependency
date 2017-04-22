@@ -33,6 +33,19 @@ module Build
 		end
 		
 		class Chain
+			# An `UnresolvedDependencyError` will be thrown if there are any unresolved dependencies.
+			def self.expand(*args)
+				chain = self.new(*args)
+				
+				chain.freeze
+				
+				if chain.unresolved.size > 0
+					raise UnresolvedDependencyError.new(chain)
+				end
+				
+				return chain
+			end
+			
 			def initialize(selection, dependencies, providers, **options)
 				# Explicitly selected targets which will be used when resolving ambiguity:
 				@selection = Set.new(selection)
@@ -51,9 +64,7 @@ module Build
 				
 				@options = options
 				
-				@dependencies.each do |dependency|
-					expand(dependency, "<top>")
-				end
+				expand_all
 			end
 			
 			attr :selection
@@ -66,7 +77,31 @@ module Build
 			attr :unresolved
 			attr :conflicts
 			
+			def freeze
+				return unless frozen?
+				
+				@selection.freeze
+				@dependencies.freeze
+				@providers.freeze
+				
+				@resolved.freeze
+				@ordered.freeze
+				@provisions.freeze
+				@unresolved.freeze
+				@conflicts.freeze
+				
+				@options.freeze
+				
+				super
+			end
+			
 			private
+			
+			def expand_all(dependencies = @dependencies, parent = "<top>")
+				dependencies.each do |dependency|
+					expand(dependency, parent)
+				end
+			end
 			
 			def ignore_priority?
 				@options[:ignore_priority]
@@ -179,17 +214,6 @@ module Build
 				
 				# For both @ordered and @provisions, we ensure that for [...xs..., x, ...], x is satisfied by ...xs....
 			end
-		end
-		
-		# An `UnresolvedDependencyError` will be thrown if there are any unresolved dependencies.
-		def self.chain(selection, dependencies, providers)
-			chain = Chain.new(selection, dependencies, providers)
-
-			if chain.unresolved.size > 0
-				raise UnresolvedDependencyError.new(chain)
-			end
-
-			return chain
 		end
 	end
 end

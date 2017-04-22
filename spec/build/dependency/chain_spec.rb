@@ -18,7 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-describe Build::Dependency do
+RSpec.describe Build::Dependency do
 	it "Should resolve dependency chain" do
 		a = Package.new
 		
@@ -41,7 +41,7 @@ describe Build::Dependency do
 		c.depends 'apple'
 		c.depends 'orange'
 		
-		chain = Build::Dependency.chain([], ['fruit-juice'], [a, b, c])
+		chain = Build::Dependency::Chain.expand([], ['fruit-juice'], [a, b, c])
 		expect(chain.ordered.collect(&:first)).to be == [a, b, c]
 		
 		d = Package.new
@@ -51,7 +51,7 @@ describe Build::Dependency do
 		
 		d.depends 'apple'
 		
-		chain = Build::Dependency.chain([], ['pie'], [a, b, c, d])
+		chain = Build::Dependency::Chain.expand([], ['pie'], [a, b, c, d])
 		
 		expect(chain.unresolved).to be == []
 		expect(chain.ordered.collect(&:first)).to be == [a, d]
@@ -91,7 +91,7 @@ describe Build::Dependency do
 		salad.depends :fruit
 		salad.provides 'salad'
 	
-		chain = Build::Dependency.chain(['apple'], ['salad'], [apple, bananna, salad])
+		chain = Build::Dependency::Chain.expand(['apple'], ['salad'], [apple, bananna, salad])
 		expect(chain.unresolved).to be == []
 		expect(chain.conflicts).to be == {}
 		
@@ -109,7 +109,7 @@ describe Build::Dependency do
 		good_apple.provides 'apple'
 		good_apple.priority = 40
 		
-		chain = Build::Dependency.chain([], ['apple'], [bad_apple, good_apple])
+		chain = Build::Dependency::Chain.expand([], ['apple'], [bad_apple, good_apple])
 		
 		expect(chain.unresolved).to be == []
 		expect(chain.conflicts).to be == {}
@@ -135,7 +135,7 @@ describe Build::Dependency do
 		application.depends :compiler
 		application.depends 'library'
 		
-		chain = Build::Dependency.chain([], ['application'], [system, library, application])
+		chain = Build::Dependency::Chain.expand([], ['application'], [system, library, application])
 		
 		expect(chain.unresolved).to be == []
 		expect(chain.conflicts).to be == {}
