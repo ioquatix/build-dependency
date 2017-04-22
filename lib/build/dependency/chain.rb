@@ -126,13 +126,13 @@ module Build
 				# Mostly, only one package will satisfy the dependency...
 				viable_providers = @providers.select{|provider| provider.provides? dependency}
 
-				# puts "** Found #{viable_providers.collect(&:name).join(', ')} viable providers.".color(:magenta)
+				puts "** Found #{viable_providers.collect(&:name).join(', ')} viable providers."
 
 				if viable_providers.size > 1
 					# ... however in some cases (typically where aliases are being used) an explicit selection must be made for the build to work correctly.
 					explicit_providers = filter_by_selection(viable_providers)
 					
-					# puts "** Filtering to #{explicit_providers.collect(&:name).join(', ')} explicit providers.".color(:magenta)
+					puts "** Filtering to #{explicit_providers.collect(&:name).join(', ')} explicit providers."
 					
 					if explicit_providers.size != 1 and !ignore_priority?
 						# If we were unable to select a single package, we may use the priority to limit the number of possible options:
@@ -159,10 +159,10 @@ module Build
 			end
 			
 			def expand(dependency, parent)
-				# puts "** Expanding #{dependency} from #{parent}".color(:magenta)
+				puts "** Expanding #{dependency} from #{parent}"
 				
 				if @resolved.include?(dependency)
-					# puts "** Already resolved dependency!".color(:magenta)
+					puts "** Already resolved dependency!"
 					
 					return
 				end
@@ -170,7 +170,7 @@ module Build
 				provider = find_provider(dependency, parent)
 
 				if provider == nil
-					# puts "** Couldn't find provider -> unresolved".color(:magenta)
+					puts "** Couldn't find provider -> unresolved"
 					@unresolved << [dependency, parent]
 					return nil
 				end
@@ -179,16 +179,18 @@ module Build
 				
 				# We will now satisfy this dependency by satisfying any dependent dependencies, but we no longer need to revisit this one.
 				@resolved << dependency
+				puts "** Resolved #{dependency.inspect}"
 
 				# If the provision was an Alias, make sure to resolve the alias first:
 				if Alias === provision
-					# puts "** Resolving alias #{provision}".color(:magenta)
+					puts "** Resolving alias #{provision}"
 
 					provision.dependencies.each do |dependency|
 						expand(dependency, provider)
 					end
 				end
 
+				puts "** Checking for #{provider.inspect} in #{resolved.inspect}"
 				unless @resolved.include?(provider)
 					# We are now satisfying the provider by expanding all its own dependencies:
 					@resolved << provider
@@ -198,7 +200,7 @@ module Build
 						expand(dependency, provider)
 					end
 
-					# puts "** Appending #{dependency} -> ordered".color(:magenta)
+					puts "** Appending #{dependency} -> ordered"
 					
 					# Add the provider to the ordered list.
 					@ordered << Resolution.new(provider, dependency)
@@ -206,7 +208,7 @@ module Build
 				
 				# This goes here because we want to ensure 1/ that if 
 				unless provision == nil or Alias === provision
-					# puts "** Appending #{dependency} -> provisions".color(:magenta)
+					puts "** Appending #{dependency} -> provisions"
 					
 					# Add the provision to the set of required provisions.
 					@provisions << provision
