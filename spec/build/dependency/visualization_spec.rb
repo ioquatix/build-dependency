@@ -18,7 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-RSpec.describe Build::Dependency::Visualize do
+RSpec.describe Build::Dependency::Visualization do
 	let(:a) do
 		Package.new('a').tap do |package|
 			package.provides 'a'
@@ -35,6 +35,7 @@ RSpec.describe Build::Dependency::Visualize do
 	let(:c) do
 		Package.new('c').tap do |package|
 			package.provides 'c'
+			package.depends 'a', private: true
 			package.depends 'b', private: true
 		end
 	end

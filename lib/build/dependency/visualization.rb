@@ -22,7 +22,7 @@ require 'graphviz'
 
 module Build
 	module Dependency
-		class Visualize
+		class Visualization
 			def initialize
 				@base_attributes = {
 					:shape => 'box',

@@ -22,4 +22,4 @@ require_relative 'dependency/version'
 
 require_relative 'dependency/unit'
 require_relative 'dependency/chain'
-require_relative 'dependency/visualize'
+require_relative 'dependency/visualization'
