@@ -48,7 +48,7 @@ module Build
 			
 			TOP = Target.new("<top>").freeze
 			
-			def initialize(selection, targets, providers, **options)
+			def initialize(selection, targets, providers)
 				# Explicitly selected targets which will be used when resolving ambiguity:
 				@selection = Set.new(selection)
 				
@@ -63,8 +63,6 @@ module Build
 				@provisions = []
 				@unresolved = []
 				@conflicts = {}
-				
-				@options = options
 				
 				@parent = Target.new("<top>")
 				
@@ -94,8 +92,6 @@ module Build
 				@unresolved.freeze
 				@conflicts.freeze
 				
-				@options.freeze
-				
 				super
 			end
 			
@@ -111,10 +107,6 @@ module Build
 				targets.each do |target|
 					expand(Target[target], parent, force)
 				end
-			end
-			
-			def ignore_priority?
-				@options[:ignore_priority]
 			end
 			
 			def filter_by_priority(viable_providers)
@@ -144,7 +136,7 @@ module Build
 					
 					# puts"** Filtering to #{explicit_providers.collect(&:name).join(', ')} explicit providers."
 					
-					if explicit_providers.size != 1 && !ignore_priority?
+					if explicit_providers.size != 1
 						# If we were unable to select a single package, we may use the priority to limit the number of possible options:
 						explicit_providers = viable_providers if explicit_providers.empty?
 						
