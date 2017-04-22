@@ -20,6 +20,6 @@
 
 require_relative 'dependency/version'
 
-require_relative 'dependency/base'
+require_relative 'dependency/unit'
 require_relative 'dependency/chain'
 require_relative 'dependency/visualize'
