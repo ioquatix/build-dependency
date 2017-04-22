@@ -64,9 +64,7 @@ module Build
 				@unresolved = []
 				@conflicts = {}
 				
-				@parent = Target.new("<top>")
-				
-				expand_all
+				expand_top
 			end
 			
 			attr :selection
@@ -95,17 +93,22 @@ module Build
 				super
 			end
 			
-			private
+			protected
 			
-			def expand?(target)
-				# puts "Should I expand target: #{target} - it's #{target.private? ? 'private' : 'not private'} and #{@targets.include?(target) ? 'in' : 'not in'} @targets"
-				
-				!target.private? || @targets.include?(target)
+			# Need to expand all dependencies of @targets, whose parent is TOP.
+			def expand_nested?(parent)
+				parent.equal?(TOP)
 			end
 			
-			def expand_all(targets = @targets, parent = TOP, force = true)
+			def expand_top
+				# puts "Expanding #{@targets.inspect}"
+				
+				expand_nested(@targets, TOP, true)
+			end
+			
+			def expand_nested(targets, provider, force = false)
 				targets.each do |target|
-					expand(Target[target], parent, force)
+					expand(Target[target], provider, force)
 				end
 			end
 			
@@ -128,13 +131,13 @@ module Build
 				# Mostly, only one package will satisfy the target...
 				viable_providers = @providers.select{|provider| provider.provides? target}
 				
-				# puts"** Found #{viable_providers.collect(&:name).join(', ')} viable providers."
+				# puts "** Found #{viable_providers.collect(&:name).join(', ')} viable providers."
 				
 				if viable_providers.size > 1
 					# ... however in some cases (typically where aliases are being used) an explicit selection must be made for the build to work correctly.
 					explicit_providers = filter_by_selection(viable_providers)
 					
-					# puts"** Filtering to #{explicit_providers.collect(&:name).join(', ')} explicit providers."
+					# puts "** Filtering to #{explicit_providers.collect(&:name).join(', ')} explicit providers."
 					
 					if explicit_providers.size != 1
 						# If we were unable to select a single package, we may use the priority to limit the number of possible options:
@@ -160,13 +163,14 @@ module Build
 				end
 			end
 			
-			def expand(target, parent, force)
-				return unless force || expand?(target)
+			def expand(target, parent, force = false)
+				# Don't expand any dependencies that are private, unless forced to do so.
+				return if !force && target.private?
 				
-				# puts "** Expanding #{target} from #{parent}"
+				# puts "** Expanding #{target.inspect} from #{parent.inspect} (force: #{force} private: #{target.private?})"
 				
 				if @resolved.include?(target)
-					# puts"** Already resolved target!"
+					# puts "** Already resolved target!"
 					
 					return
 				end
@@ -174,7 +178,7 @@ module Build
 				provider = find_provider(target, parent)
 				
 				if provider == nil
-					# puts"** Couldn't find provider -> unresolved"
+					# puts "** Couldn't find provider -> unresolved"
 					@unresolved << [target, parent]
 					return nil
 				end
@@ -182,27 +186,24 @@ module Build
 				provision = provider.provision_for(target)
 				
 				# We will now satisfy this target by satisfying any dependent targets, but we no longer need to revisit this one.
-				# puts"** Resolved #{target} (#{provision.inspect})"
+				# puts "** Resolved #{target} (#{provision.inspect})"
 				@resolved << target
 				
 				# If the provision was an Alias, make sure to resolve the alias first:
 				if Alias === provision
-					# puts"** Resolving alias #{provision} (#{provision.targets.inspect})"
-					
-					# We force expand all children of any top level target:
-					# TODO: While this works, it feels a bit messy.
-					expand_all(provision.targets, provider, parent.equal?(TOP))
+					# puts "** Resolving alias #{provision} (#{provision.targets.inspect})"
+					expand_nested(provision.targets, provider, expand_nested?(parent))
 				end
 				
-				# puts"** Checking for #{provider.inspect} in #{resolved.inspect}"
+				# puts "** Checking for #{provider.inspect} in #{resolved.inspect}"
 				unless @resolved.include?(provider)
 					# We are now satisfying the provider by expanding all its own targets:
 					@resolved << provider
 					
 					# Make sure we satisfy the provider's targets first:
-					expand_all(provider.targets, provider, parent.equal?(TOP))
+					expand_nested(provider.targets, provider, expand_nested?(parent))
 					
-					# puts"** Appending #{target} -> ordered"
+					# puts "** Appending #{target} -> ordered"
 					
 					# Add the provider to the ordered list.
 					@ordered << Resolution.new(provider, target)
@@ -210,7 +211,7 @@ module Build
 				
 				# This goes here because we want to ensure 1/ that if 
 				unless provision == nil or Alias === provision
-					# puts"** Appending #{target} -> provisions"
+					# puts "** Appending #{target} -> provisions"
 					
 					# Add the provision to the set of required provisions.
 					@provisions << provision
