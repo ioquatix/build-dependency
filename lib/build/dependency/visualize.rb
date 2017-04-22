@@ -36,6 +36,10 @@ module Build
 				}
 			end
 			
+			attr :base_attributes
+			attr :provision_attributes
+			attr :alias_attributes
+			
 			def generate(chain)
 				graph = Graphviz::Graph.new
 				graph.attributes[:ratio] = :auto
