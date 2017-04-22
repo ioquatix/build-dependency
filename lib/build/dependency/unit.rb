@@ -29,13 +29,29 @@ module Build
 		# A provision is a thing which satisfies a target.
 		Provision = Struct.new(:value)
 		
-		Alias = Struct.new(:dependencies)
+		Alias = Struct.new(:targets)
 		
-		Resolution = Struct.new(:provider, :name)
+		Resolution = Struct.new(:provider, :target)
 		
-		Target = Struct.new(:name, :options) do
+		Target = Struct.new(:name) do
+			def initialize(name, **options)
+				super(name)
+				
+				@options = options
+			end
+			
+			attr :options
+			
 			def private?
-				options[:private]
+				@options[:private]
+			end
+			
+			def alias?
+				name.is_a?(Symbol)
+			end
+			
+			def self.[] name_or_target
+				name_or_target.is_a?(self) ? name_or_target : self.new(name_or_target)
 			end
 		end
 		
@@ -44,7 +60,7 @@ module Build
 				return unless frozen?
 				
 				provisions.freeze
-				dependencies.freeze
+				targets.freeze
 				
 				super
 			end
@@ -66,12 +82,16 @@ module Build
 			
 			# @return Set<Dependency>
 			def targets
-				@targets ||= {}
+				@targets ||= Set.new
 			end
 			
 			# Does this unit provide the named thing?
-			def provides?(name)
-				provisions.key? name
+			def provides?(target)
+				provisions.key?(target.name)
+			end
+			
+			def provision_for(target)
+				provisions[target.name]
 			end
 			
 			# Mark this unit as providing the named thing, with an optional block.
@@ -83,19 +103,15 @@ module Build
 				else
 					aliases = name_or_aliases
 					
-					aliases.each do |name, dependencies|
-						provisions[name] = Alias.new(Array(dependencies))
+					aliases.each do |name, targets|
+						provisions[name] = Alias.new(Array(targets))
 					end
 				end
 			end
 			
-			def dependencies
-				targets.keys
-			end
-			
 			def depends(*names, **options)
 				names.each do |name|
-					targets[name] = Target.new(name, **options)
+					targets << Target.new(name, **options)
 				end
 			end
 			

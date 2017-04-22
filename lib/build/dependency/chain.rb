@@ -24,7 +24,7 @@ module Build
 	module Dependency
 		class UnresolvedDependencyError < StandardError
 			def initialize(chain)
-				super "Unresolved dependency chain!"
+				super "Unresolved target chain!"
 				
 				@chain = chain
 			end
@@ -33,7 +33,7 @@ module Build
 		end
 		
 		class Chain
-			# An `UnresolvedDependencyError` will be thrown if there are any unresolved dependencies.
+			# An `UnresolvedDependencyError` will be thrown if there are any unresolved targets.
 			def self.expand(*args)
 				chain = self.new(*args)
 				
@@ -46,14 +46,16 @@ module Build
 				return chain
 			end
 			
-			def initialize(selection, dependencies, providers, **options)
+			TOP = Target.new("<top>").freeze
+			
+			def initialize(selection, targets, providers, **options)
 				# Explicitly selected targets which will be used when resolving ambiguity:
 				@selection = Set.new(selection)
 				
-				# The list of dependencies that needs to be satisfied:
-				@dependencies = dependencies
+				# The list of targets that needs to be satisfied:
+				@targets = targets
 				
-				# The available providers which match up to required dependencies:
+				# The available providers which match up to required targets:
 				@providers = providers
 				
 				@resolved = Set.new
@@ -64,11 +66,13 @@ module Build
 				
 				@options = options
 				
-				expand_all
+				@parent = Target.new("<top>")
+				
+				expand_all(@targets, @parent)
 			end
 			
 			attr :selection
-			attr :dependencies
+			attr :targets
 			attr :providers
 			
 			attr :resolved
@@ -81,7 +85,7 @@ module Build
 				return unless frozen?
 				
 				@selection.freeze
-				@dependencies.freeze
+				@targets.freeze
 				@providers.freeze
 				
 				@resolved.freeze
@@ -97,9 +101,9 @@ module Build
 			
 			private
 			
-			def expand_all(dependencies = @dependencies, parent = "<top>")
-				dependencies.each do |dependency|
-					expand(dependency, parent)
+			def expand_all(targets = @targets, parent = TOP)
+				targets.each do |target|
+					expand(Target[target], parent)
 				end
 			end
 			
@@ -122,17 +126,17 @@ module Build
 				return viable_providers.select{|provider| @selection.include? provider.name}
 			end
 			
-			def find_provider(dependency, parent)
-				# Mostly, only one package will satisfy the dependency...
-				viable_providers = @providers.select{|provider| provider.provides? dependency}
+			def find_provider(target, parent)
+				# Mostly, only one package will satisfy the target...
+				viable_providers = @providers.select{|provider| provider.provides? target}
 
-				puts "** Found #{viable_providers.collect(&:name).join(', ')} viable providers."
+				# puts"** Found #{viable_providers.collect(&:name).join(', ')} viable providers."
 
 				if viable_providers.size > 1
 					# ... however in some cases (typically where aliases are being used) an explicit selection must be made for the build to work correctly.
 					explicit_providers = filter_by_selection(viable_providers)
 					
-					puts "** Filtering to #{explicit_providers.collect(&:name).join(', ')} explicit providers."
+					# puts"** Filtering to #{explicit_providers.collect(&:name).join(', ')} explicit providers."
 					
 					if explicit_providers.size != 1 and !ignore_priority?
 						# If we were unable to select a single package, we may use the priority to limit the number of possible options:
@@ -143,14 +147,14 @@ module Build
 					
 					if explicit_providers.size == 0
 						# No provider was explicitly specified, thus we require explicit conflict resolution:
-						@conflicts[dependency] = viable_providers
+						@conflicts[target] = viable_providers
 						return nil
 					elsif explicit_providers.size == 1
 						# The best outcome, a specific provider was named:
 						return explicit_providers.first
 					else
-						# Multiple providers were explicitly mentioned that satisfy the dependency.
-						@conflicts[dependency] = explicit_providers
+						# Multiple providers were explicitly mentioned that satisfy the target.
+						@conflicts[target] = explicit_providers
 						return nil
 					end
 				else
@@ -158,57 +162,53 @@ module Build
 				end
 			end
 			
-			def expand(dependency, parent)
-				puts "** Expanding #{dependency} from #{parent}"
+			def expand(target, parent)
+				# puts"** Expanding #{target} from #{parent}"
 				
-				if @resolved.include?(dependency)
-					puts "** Already resolved dependency!"
+				if @resolved.include?(target)
+					# puts"** Already resolved target!"
 					
 					return
 				end
 				
-				provider = find_provider(dependency, parent)
+				provider = find_provider(target, parent)
 
 				if provider == nil
-					puts "** Couldn't find provider -> unresolved"
-					@unresolved << [dependency, parent]
+					# puts"** Couldn't find provider -> unresolved"
+					@unresolved << [target, parent]
 					return nil
 				end
 				
-				provision = provider.provisions[dependency]
+				provision = provider.provision_for(target)
 				
-				# We will now satisfy this dependency by satisfying any dependent dependencies, but we no longer need to revisit this one.
-				@resolved << dependency
-				puts "** Resolved #{dependency.inspect}"
-
+				# We will now satisfy this target by satisfying any dependent targets, but we no longer need to revisit this one.
+				# puts"** Resolved #{target} (#{provision.inspect})"
+				@resolved << target
+				
 				# If the provision was an Alias, make sure to resolve the alias first:
 				if Alias === provision
-					puts "** Resolving alias #{provision}"
-
-					provision.dependencies.each do |dependency|
-						expand(dependency, provider)
-					end
+					# puts"** Resolving alias #{provision} (#{provision.targets.inspect})"
+					
+					expand_all(provision.targets, provider) unless target.private?
 				end
 
-				puts "** Checking for #{provider.inspect} in #{resolved.inspect}"
+				# puts"** Checking for #{provider.inspect} in #{resolved.inspect}"
 				unless @resolved.include?(provider)
-					# We are now satisfying the provider by expanding all its own dependencies:
+					# We are now satisfying the provider by expanding all its own targets:
 					@resolved << provider
 
-					# Make sure we satisfy the provider's dependencies first:
-					provider.dependencies.each do |dependency|
-						expand(dependency, provider)
-					end
-
-					puts "** Appending #{dependency} -> ordered"
+					# Make sure we satisfy the provider's targets first:
+					expand_all(provider.targets, provider) unless target.private?
+					
+					# puts"** Appending #{target} -> ordered"
 					
 					# Add the provider to the ordered list.
-					@ordered << Resolution.new(provider, dependency)
+					@ordered << Resolution.new(provider, target)
 				end
 				
 				# This goes here because we want to ensure 1/ that if 
 				unless provision == nil or Alias === provision
-					puts "** Appending #{dependency} -> provisions"
+					# puts"** Appending #{target} -> provisions"
 					
 					# Add the provision to the set of required provisions.
 					@provisions << provision

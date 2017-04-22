@@ -19,63 +19,76 @@
 # THE SOFTWARE.
 
 RSpec.describe Build::Dependency do
-	it "Should resolve dependency chain" do
-		a = Package.new
-		
-		a.provides 'apple' do
-			fruit ['apple']
+	describe "valid dependency resolution" do
+		let(:a) do
+			Package.new.tap do |package|
+				package.provides 'apple' do
+					fruit ['apple']
+				end
+			end
 		end
 		
-		b = Package.new
-		
-		b.provides 'orange' do
-			fruit ['orange']
+		let(:b) do
+			Package.new.tap do |package|
+				package.provides 'orange' do
+					fruit ['orange']
+				end
+			end
 		end
 		
-		c = Package.new
-		
-		c.provides 'fruit-juice' do
-			juice ['ice', 'cold']
+		let(:c) do
+			Package.new.tap do |package|
+				package.provides 'fruit-juice' do
+					juice ['ice', 'cold']
+				end
+				
+				package.depends 'apple'
+				package.depends 'orange'
+			end
 		end
 		
-		c.depends 'apple'
-		c.depends 'orange'
-		
-		chain = Build::Dependency::Chain.expand([], ['fruit-juice'], [a, b, c])
-		expect(chain.ordered.collect(&:first)).to be == [a, b, c]
-		
-		d = Package.new
-		
-		d.provides 'pie' do
+		it "should resolve direct dependency chain" do
+			chain = Build::Dependency::Chain.expand([], ['fruit-juice'], [a, b, c])
+			expect(chain.ordered.collect(&:first)).to be == [a, b, c]
+			expect(chain.unresolved).to be == []
 		end
 		
-		d.depends 'apple'
+		let(:d) do
+			Package.new.tap do |package|
+				package.provides 'pie'
+				package.depends 'apple'
+			end
+		end
 		
-		chain = Build::Dependency::Chain.expand([], ['pie'], [a, b, c, d])
-		
-		expect(chain.unresolved).to be == []
-		expect(chain.ordered.collect(&:first)).to be == [a, d]
+		it "shouldn't include unrelated units" do
+			chain = Build::Dependency::Chain.expand([], ['pie'], [a, b, c, d])
+			
+			expect(chain.unresolved).to be == []
+			expect(chain.ordered.collect(&:first)).to be == [a, d]
+		end
 	end
 	
-	it "should report conflicts" do
-		apple = Package.new('apple')
-		apple.provides 'apple'
-		apple.provides 'fruit'
-	
-		bananna = Package.new('bananna')
-		bananna.provides 'fruit'
-	
-		salad = Package.new('salad')
-		salad.depends 'fruit'
-		salad.provides 'salad'
-	
-		chain = Build::Dependency::Chain.new([], ['salad'], [apple, bananna, salad])
-		expect(chain.unresolved.first).to be == ["fruit", salad]
-		expect(chain.conflicts).to be == {"fruit" => [apple, bananna]}
-	
-		chain = Build::Dependency::Chain.new(['apple'], ['salad'], [apple, bananna, salad])
-		expect(chain.unresolved).to be == []
-		expect(chain.conflicts).to be == {}
+	describe "incomplete dependency resolution" do
+		it "should report conflicts" do
+			apple = Package.new('apple')
+			apple.provides 'apple'
+			apple.provides 'fruit'
+		
+			bananna = Package.new('bananna')
+			bananna.provides 'fruit'
+		
+			salad = Package.new('salad')
+			salad.depends 'fruit'
+			salad.provides 'salad'
+		
+			chain = Build::Dependency::Chain.new([], ['salad'], [apple, bananna, salad])
+			expect(chain.unresolved.first).to be == [Build::Dependency::Target.new("fruit"), salad]
+			expect(chain.conflicts).to be == {Build::Dependency::Target.new("fruit") => [apple, bananna]}
+		
+			chain = Build::Dependency::Chain.new(['apple'], ['salad'], [apple, bananna, salad])
+			expect(chain.unresolved).to be == []
+			expect(chain.conflicts).to be == {}
+		end
 	end
 	
 	it "should resolve aliases" do
@@ -96,8 +109,8 @@ RSpec.describe Build::Dependency do
 		expect(chain.conflicts).to be == {}
 		
 		expect(chain.ordered.size).to be == 2
-		expect(chain.ordered[0]).to be == Build::Dependency::Resolution.new(apple, "apple")
-		expect(chain.ordered[1]).to be == Build::Dependency::Resolution.new(salad, "salad")
+		expect(chain.ordered[0]).to be == Build::Dependency::Resolution.new(apple, Build::Dependency::Target.new("apple"))
+		expect(chain.ordered[1]).to be == Build::Dependency::Resolution.new(salad, Build::Dependency::Target.new("salad"))
 	end
 	
 	it "should select dependencies with high priority" do
@@ -115,7 +128,7 @@ RSpec.describe Build::Dependency do
 		expect(chain.conflicts).to be == {}
 		
 		# Should select higher priority package by default:
-		expect(chain.ordered).to be == [Build::Dependency::Resolution.new(good_apple, 'apple')]
+		expect(chain.ordered).to be == [Build::Dependency::Resolution.new(good_apple, Build::Dependency::Target.new('apple'))]
 	end
 	
 	it "should expose direct dependencies" do
@@ -140,9 +153,12 @@ RSpec.describe Build::Dependency do
 		expect(chain.unresolved).to be == []
 		expect(chain.conflicts).to be == {}
 		expect(chain.ordered).to be == [
-			Build::Dependency::Resolution.new(system, 'clang'),
-			Build::Dependency::Resolution.new(library, 'library'),
-			Build::Dependency::Resolution.new(application, 'application'),
+			Build::Dependency::Resolution.new(system, Build::Dependency::Target.new('clang')),
+			Build::Dependency::Resolution.new(library, Build::Dependency::Target.new('library')),
+			Build::Dependency::Resolution.new(application, Build::Dependency::Target.new('application')),
 		]
+	end
+	
+	it "shouldn't follow private dependencies" do
 	end
 end

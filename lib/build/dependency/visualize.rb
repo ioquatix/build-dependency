@@ -46,21 +46,21 @@ module Build
 					provider = resolution.provider
 					name = resolution.name
 					
-					# Provider is the target that provides the dependency referred to by name.
+					# Provider is the target that provides the target referred to by name.
 					node = g.add_node(name.to_s, base_attributes.dup)
 					
-					if chain.dependencies.include?(name)
+					if chain.targets.include?(name)
 						node.attributes[:color] = 'blue'
 						node.attributes[:penwidth] = 2.0
 					elsif chain.selection.include?(provider.name)
 						node.attributes[:color] = 'brown'
 					end
 					
-					# A provision has dependencies...
-					provider.dependencies.each do |dependency|
-						dependency_node = g.nodes[dependency.to_s]
+					# A provision has targets...
+					provider.targets.each do |target|
+						target_node = g.nodes[target.to_s]
 						
-						node.connect(dependency_node) if dependency_node
+						node.connect(target_node) if target_node
 					end
 					
 					# A provision provides other provisions...
@@ -79,7 +79,7 @@ module Build
 					end
 				end
 				
-				# Put all dependencies at the same level so as to not make the graph too confusing.
+				# Put all targets at the same level so as to not make the graph too confusing.
 				done = Set.new
 				chain.ordered.each do |resolution|
 					provider = resolution.provider
@@ -87,14 +87,14 @@ module Build
 					
 					p = g.graphs[provider.name] || g.add_subgraph(provider.name, :rank => :same)
 					
-					provider.dependencies.each do |dependency|
-						next if done.include? dependency
+					provider.targets.each do |target|
+						next if done.include? target
 						
-						done << dependency
+						done << target
 						
-						dependency_node = g.nodes[dependency.to_s]
+						target_node = g.nodes[target.to_s]
 						
-						p.add_node(dependency_node.name)
+						p.add_node(target_node.name)
 					end
 				end
 				
