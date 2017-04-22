@@ -23,31 +23,29 @@ require 'graphviz'
 module Build
 	module Dependency
 		class Visualize
-			def initialize(chain)
-				@chain = chain
-			end
-			
-			def visualize
-				g = Graphviz::Graph.new
-				g.attributes[:ratio] = :auto
-				
-				base_attributes = {
+			def initialize
+				@base_attributes = {
 					:shape => 'box',
 				}
 				
-				provision_attributes = base_attributes.dup
+				@provision_attributes = @base_attributes.dup
 				
-				alias_attributes = {
+				@alias_attributes = {
 					:shape => 'box',
 					:color => 'grey',
 				}
+			end
+			
+			def generate(chain)
+				graph = Graphviz::Graph.new
+				graph.attributes[:ratio] = :auto
 				
-				@chain.ordered.each do |resolution|
+				chain.ordered.each do |resolution|
 					provider = resolution.provider
-					name = resolution.name
+					name = resolution.target.name
 					
 					# Provider is the target that provides the target referred to by name.
-					node = g.add_node(name.to_s, base_attributes.dup)
+					node = graph.add_node(name.to_s, @base_attributes.dup)
 					
 					if chain.targets.include?(name)
 						node.attributes[:color] = 'blue'
@@ -58,19 +56,19 @@ module Build
 					
 					# A provision has targets...
 					provider.targets.each do |target|
-						target_node = g.nodes[target.to_s]
+						target_node = graph.nodes[target.to_s]
 						
 						node.connect(target_node) if target_node
 					end
 					
 					# A provision provides other provisions...
-					provider.provisions.each do |(provision_name, provision)|
+					provider.provisions.each do |provision_name, provision|
 						next if name == provision_name
 						
-						provides_node = g.nodes[provision_name.to_s] || g.add_node(provision_name.to_s, provision_attributes)
+						provides_node = graph.nodes[provision_name.to_s] || graph.add_node(provision_name.to_s, @provision_attributes)
 						
 						if Dependency::Alias === provision
-							provides_node.attributes = alias_attributes
+							provides_node.attributes = @alias_attributes
 						end
 						
 						unless provides_node.connected?(node)
@@ -79,26 +77,26 @@ module Build
 					end
 				end
 				
-				# Put all targets at the same level so as to not make the graph too confusing.
+				# Put all targets at the same level so as to not make the graph too confusingraph.
 				done = Set.new
 				chain.ordered.each do |resolution|
 					provider = resolution.provider
-					name = resolution.name
+					name = resolution.target.name
 					
-					p = g.graphs[provider.name] || g.add_subgraph(provider.name, :rank => :same)
+					subgraph = graph.nodes[provider.name] || graph.add_subgraph(provider.name, :rank => :same)
 					
 					provider.targets.each do |target|
 						next if done.include? target
 						
 						done << target
 						
-						target_node = g.nodes[target.to_s]
-						
-						p.add_node(target_node.name)
+						if target_node = graph.nodes[target.name.to_s]
+							subgraph.add_node(target_node.name)
+						end
 					end
 				end
 				
-				return g
+				return graph
 			end
 		end
 	end
