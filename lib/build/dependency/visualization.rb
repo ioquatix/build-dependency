@@ -26,19 +26,50 @@ module Build
 			def initialize
 				@base_attributes = {
 					:shape => 'box',
+					:style => 'filled',
+					:fillcolor => 'white',
+					:fontname => 'Monaco',
 				}
 				
 				@provision_attributes = @base_attributes.dup
 				
-				@alias_attributes = {
-					:shape => 'box',
-					:color => 'grey',
+				@alias_attributes = @base_attributes.merge(
+					:fillcolor => 'lightgrey',
+				)
+				
+				@target_attributes = @base_attributes.merge(
+					:fillcolor => 'orange',
+				)
+				
+				@selection_attributes = {
+					:fillcolor => 'lightbrown',
+				}
+				
+				@private_edge_attributes = {
+					:arrowhead => 'empty',
+					:color => '#0000005f'
+				}
+				
+				@provider_attributes = {
+					:fillcolor => 'lightblue',
+				}
+				
+				@provider_edge_attributes = {
+					:arrowhead => 'none',
 				}
 			end
 			
 			attr :base_attributes
 			attr :provision_attributes
+			
+			attr :provider_attributes
+			attr :provider_edge_attributes
+			
 			attr :alias_attributes
+			
+			attr :target_attributes
+			attr :selection_attributes
+			attr :private_edge_attributes
 			
 			def generate(chain)
 				graph = Graphviz::Graph.new
@@ -46,23 +77,26 @@ module Build
 				
 				chain.ordered.each do |resolution|
 					provider = resolution.provider
-					name = resolution.target.name
+					name = provider.name
 					
 					# Provider is the target that provides the target referred to by name.
 					node = graph.add_node(name.to_s, @base_attributes.dup)
 					
-					if chain.targets.include?(name)
-						node.attributes[:color] = 'blue'
-						node.attributes[:penwidth] = 2.0
+					if chain.targets.include?(resolution.target)
+						node.attributes.update(@target_attributes)
 					elsif chain.selection.include?(provider.name)
-						node.attributes[:color] = 'brown'
+						node.attributes.update(@selection_attributes)
 					end
 					
 					# A provision has targets...
 					provider.targets.each do |target|
-						target_node = graph.nodes[target.to_s]
-						
-						node.connect(target_node) if target_node
+						if target_node = graph.nodes[target.name.to_s]
+							edge = node.connect(target_node)
+							
+							if target.private?
+								edge.attributes.update(@private_edge_attributes)
+							end
+						end
 					end
 					
 					# A provision provides other provisions...
@@ -75,8 +109,12 @@ module Build
 							provides_node.attributes = @alias_attributes
 						end
 						
+						node.attributes.update(@provider_attributes)
+						
 						unless provides_node.connected?(node)
 							edge = provides_node.connect(node)
+							
+							edge.attributes.update(@provider_edge_attributes)
 						end
 					end
 				end
@@ -85,9 +123,9 @@ module Build
 				done = Set.new
 				chain.ordered.each do |resolution|
 					provider = resolution.provider
-					name = resolution.target.name
+					name = "subgraph-#{provider.name}"
 					
-					subgraph = graph.nodes[provider.name] || graph.add_subgraph(provider.name, :rank => :same)
+					subgraph = graph.nodes[name] || graph.add_subgraph(name, :rank => :same)
 					
 					provider.targets.each do |target|
 						next if done.include? target

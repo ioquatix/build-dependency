@@ -24,7 +24,7 @@ module Build
 	module Dependency
 		class UnresolvedDependencyError < StandardError
 			def initialize(chain)
-				super "Unresolved target chain!"
+				super "Unresolved target chain: #{chain.unresolved.inspect}!"
 				
 				@chain = chain
 			end
@@ -32,7 +32,99 @@ module Build
 			attr :chain
 		end
 		
-		class Chain
+		TOP = Target.new("<top>").freeze
+		
+		class Resolver
+			def initialize
+				@resolved = {}
+				@ordered = []
+				@provisions = []
+				@unresolved = []
+				@conflicts = {}
+			end
+			
+			attr :resolved
+			attr :ordered
+			attr :provisions
+			attr :unresolved
+			attr :conflicts
+			
+			def freeze
+				return unless frozen?
+				
+				@resolved.freeze
+				@ordered.freeze
+				@provisions.freeze
+				@unresolved.freeze
+				@conflicts.freeze
+				
+				super
+			end
+			
+			protected
+			
+			def expand_nested(targets, provider)
+				targets.each do |target|
+					expand(Target[target], provider)
+				end
+			end
+			
+			def expand(target, parent)
+				# puts "** Expanding #{target.inspect} from #{parent.inspect} (force: #{force} private: #{target.private?})"
+				
+				if @resolved.include?(target)
+					# puts "** Already resolved target!"
+					
+					return
+				end
+				
+				provider = find_provider(target, parent)
+				
+				if provider == nil
+					# puts "** Couldn't find provider -> unresolved"
+					@unresolved << [target, parent]
+					return nil
+				end
+				
+				provision = provision_for(provider, target)
+				
+				# We will now satisfy this target by satisfying any dependent targets, but we no longer need to revisit this one.
+				# puts "** Resolved #{target} (#{provision.inspect})"
+				@resolved[target] = provider
+				
+				# If the provision was an Alias, make sure to resolve the alias first:
+				if Alias === provision
+					# puts "** Resolving alias #{provision} (#{provision.targets.inspect})"
+					expand_nested(provision.targets, provider)
+				end
+				
+				# puts "** Checking for #{provider.inspect} in #{resolved.inspect}"
+				unless @resolved.include?(provider)
+					# We are now satisfying the provider by expanding all its own targets:
+					@resolved[provider] = provision
+					
+					# Make sure we satisfy the provider's targets first:
+					expand_nested(provider.targets, provider)
+					
+					# puts "** Appending #{target} -> ordered"
+					
+					# Add the provider to the ordered list.
+					@ordered << Resolution.new(provider, target)
+				end
+				
+				# This goes here because we want to ensure 1/ that if 
+				unless provision == nil or Alias === provision
+					# puts "** Appending #{target} -> provisions"
+					
+					# Add the provision to the set of required provisions.
+					@provisions << provision
+				end
+				
+				# For both @ordered and @provisions, we ensure that for [...xs..., x, ...], x is satisfied by ...xs....
+			end
+		end
+		
+		class Chain < Resolver
 			# An `UnresolvedDependencyError` will be thrown if there are any unresolved targets.
 			def self.expand(*args)
 				chain = self.new(*args)
@@ -46,23 +138,17 @@ module Build
 				return chain
 			end
 			
-			TOP = Target.new("<top>").freeze
-			
-			def initialize(selection, targets, providers)
+			def initialize(targets, providers, selection = [])
+				super()
+				
 				# Explicitly selected targets which will be used when resolving ambiguity:
 				@selection = Set.new(selection)
 				
 				# The list of targets that needs to be satisfied:
-				@targets = targets
+				@targets = targets.collect{|target| Target[target]}
 				
 				# The available providers which match up to required targets:
 				@providers = providers
-				
-				@resolved = Set.new
-				@ordered = []
-				@provisions = []
-				@unresolved = []
-				@conflicts = {}
 				
 				expand_top
 			end
@@ -71,12 +157,6 @@ module Build
 			attr :targets
 			attr :providers
 			
-			attr :resolved
-			attr :ordered
-			attr :provisions
-			attr :unresolved
-			attr :conflicts
-			
 			def freeze
 				return unless frozen?
 				
@@ -84,32 +164,15 @@ module Build
 				@targets.freeze
 				@providers.freeze
 				
-				@resolved.freeze
-				@ordered.freeze
-				@provisions.freeze
-				@unresolved.freeze
-				@conflicts.freeze
-				
 				super
 			end
 			
 			protected
 			
-			# Need to expand all dependencies of @targets, whose parent is TOP.
-			def expand_nested?(parent)
-				parent.equal?(TOP)
-			end
-			
 			def expand_top
 				# puts "Expanding #{@targets.inspect}"
 				
-				expand_nested(@targets, TOP, true)
-			end
-			
-			def expand_nested(targets, provider, force = false)
-				targets.each do |target|
-					expand(Target[target], provider, force)
-				end
+				expand_nested(@targets, TOP)
 			end
 			
 			def filter_by_priority(viable_providers)
@@ -163,61 +226,8 @@ module Build
 				end
 			end
 			
-			def expand(target, parent, force = false)
-				# Don't expand any dependencies that are private, unless forced to do so.
-				return if !force && target.private?
-				
-				# puts "** Expanding #{target.inspect} from #{parent.inspect} (force: #{force} private: #{target.private?})"
-				
-				if @resolved.include?(target)
-					# puts "** Already resolved target!"
-					
-					return
-				end
-				
-				provider = find_provider(target, parent)
-				
-				if provider == nil
-					# puts "** Couldn't find provider -> unresolved"
-					@unresolved << [target, parent]
-					return nil
-				end
-				
-				provision = provider.provision_for(target)
-				
-				# We will now satisfy this target by satisfying any dependent targets, but we no longer need to revisit this one.
-				# puts "** Resolved #{target} (#{provision.inspect})"
-				@resolved << target
-				
-				# If the provision was an Alias, make sure to resolve the alias first:
-				if Alias === provision
-					# puts "** Resolving alias #{provision} (#{provision.targets.inspect})"
-					expand_nested(provision.targets, provider, expand_nested?(parent))
-				end
-				
-				# puts "** Checking for #{provider.inspect} in #{resolved.inspect}"
-				unless @resolved.include?(provider)
-					# We are now satisfying the provider by expanding all its own targets:
-					@resolved << provider
-					
-					# Make sure we satisfy the provider's targets first:
-					expand_nested(provider.targets, provider, expand_nested?(parent))
-					
-					# puts "** Appending #{target} -> ordered"
-					
-					# Add the provider to the ordered list.
-					@ordered << Resolution.new(provider, target)
-				end
-				
-				# This goes here because we want to ensure 1/ that if 
-				unless provision == nil or Alias === provision
-					# puts "** Appending #{target} -> provisions"
-					
-					# Add the provision to the set of required provisions.
-					@provisions << provision
-				end
-				
-				# For both @ordered and @provisions, we ensure that for [...xs..., x, ...], x is satisfied by ...xs....
+			def provision_for(provider, target)
+				provider.provision_for(target)
 			end
 		end
 	end

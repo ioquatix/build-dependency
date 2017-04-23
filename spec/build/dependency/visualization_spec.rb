@@ -19,39 +19,13 @@
 # THE SOFTWARE.
 
 RSpec.describe Build::Dependency::Visualization do
-	let(:a) do
-		Package.new('a').tap do |package|
-			package.provides 'a'
-		end
-	end
-	
-	let(:b) do
-		Package.new('b').tap do |package|
-			package.provides 'b'
-			package.depends 'a', private: true
-		end
-	end
-	
-	let(:c) do
-		Package.new('c').tap do |package|
-			package.provides 'c'
-			package.depends 'a', private: true
-			package.depends 'b', private: true
-		end
-	end
-	
-	let(:d) do
-		Package.new('d').tap do |package|
-			package.provides 'd'
-			package.depends 'c'
-		end
-	end
+	include_context "app packages"
 	
 	it "should visualize dependency chain" do
-		chain = Build::Dependency::Chain.expand([], ['d'], [a, b, c, d])
+		chain = Build::Dependency::Chain.expand(['app', 'tests'], packages)
 		
 		graph = subject.generate(chain)
 		
-		Graphviz::output(graph, path: "graph.pdf")
+		Graphviz::output(graph, path: "graph.svg")
 	end
 end

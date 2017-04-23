@@ -48,7 +48,7 @@ RSpec.describe Build::Dependency do
 		end
 		
 		it "should resolve direct dependency chain" do
-			chain = Build::Dependency::Chain.expand([], ['fruit-juice'], [a, b, c])
+			chain = Build::Dependency::Chain.expand(['fruit-juice'], [a, b, c])
 			expect(chain.ordered.collect(&:first)).to be == [a, b, c]
 			expect(chain.unresolved).to be == []
 		end
@@ -61,7 +61,7 @@ RSpec.describe Build::Dependency do
 		end
 		
 		it "shouldn't include unrelated units" do
-			chain = Build::Dependency::Chain.expand([], ['pie'], [a, b, c, d])
+			chain = Build::Dependency::Chain.expand(['pie'], [a, b, c, d])
 			
 			expect(chain.unresolved).to be == []
 			expect(chain.ordered.collect(&:first)).to be == [a, d]
@@ -81,11 +81,11 @@ RSpec.describe Build::Dependency do
 			salad.depends 'fruit'
 			salad.provides 'salad'
 		
-			chain = Build::Dependency::Chain.new([], ['salad'], [apple, bananna, salad])
+			chain = Build::Dependency::Chain.new(['salad'], [apple, bananna, salad])
 			expect(chain.unresolved.first).to be == [Build::Dependency::Target.new("fruit"), salad]
 			expect(chain.conflicts).to be == {Build::Dependency::Target.new("fruit") => [apple, bananna]}
 		
-			chain = Build::Dependency::Chain.new(['apple'], ['salad'], [apple, bananna, salad])
+			chain = Build::Dependency::Chain.new(['salad'], [apple, bananna, salad], ['apple'])
 			expect(chain.unresolved).to be == []
 			expect(chain.conflicts).to be == {}
 		end
@@ -104,7 +104,7 @@ RSpec.describe Build::Dependency do
 		salad.depends :fruit
 		salad.provides 'salad'
 	
-		chain = Build::Dependency::Chain.expand(['apple'], ['salad'], [apple, bananna, salad])
+		chain = Build::Dependency::Chain.expand(['salad'], [apple, bananna, salad], ['apple'])
 		expect(chain.unresolved).to be == []
 		expect(chain.conflicts).to be == {}
 		
@@ -122,7 +122,7 @@ RSpec.describe Build::Dependency do
 		good_apple.provides 'apple'
 		good_apple.priority = 40
 		
-		chain = Build::Dependency::Chain.expand([], ['apple'], [bad_apple, good_apple])
+		chain = Build::Dependency::Chain.expand(['apple'], [bad_apple, good_apple])
 		
 		expect(chain.unresolved).to be == []
 		expect(chain.conflicts).to be == {}
@@ -148,7 +148,7 @@ RSpec.describe Build::Dependency do
 		application.depends :compiler
 		application.depends 'library'
 		
-		chain = Build::Dependency::Chain.expand([], ['application'], [system, library, application])
+		chain = Build::Dependency::Chain.expand(['application'], [system, library, application])
 		
 		expect(chain.unresolved).to be == []
 		expect(chain.conflicts).to be == {}
@@ -157,8 +157,5 @@ RSpec.describe Build::Dependency do
 			Build::Dependency::Resolution.new(library, Build::Dependency::Target.new('library')),
 			Build::Dependency::Resolution.new(application, Build::Dependency::Target.new('application')),
 		]
-	end
-	
-	it "shouldn't follow private dependencies" do
 	end
 end
