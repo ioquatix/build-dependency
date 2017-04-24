@@ -90,7 +90,8 @@ module Build
 			end
 			
 			def provision_for(provider, target)
-				@chain.resolved[provider]
+				# @chain.resolved[provider] does work, but it points to the most recently added provision, but we want the provision related to the specific target.
+				provider.provision_for(target)
 			end
 		end
 	end
