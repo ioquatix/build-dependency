@@ -27,9 +27,9 @@ module Build
 		end
 		
 		# A provision is a thing which satisfies a target.
-		Provision = Struct.new(:value, :provider)
+		Provision = Struct.new(:name, :provider, :value)
 		
-		Alias = Struct.new(:targets, :provider)
+		Alias = Struct.new(:name, :provider, :targets)
 		
 		Resolution = Struct.new(:provider, :target) do
 			def name
@@ -103,12 +103,12 @@ module Build
 				if String === name_or_aliases || Symbol === name_or_aliases
 					name = name_or_aliases
 					
-					provisions[name] = Provision.new(block, self)
+					provisions[name] = Provision.new(name, self, block)
 				else
 					aliases = name_or_aliases
 					
 					aliases.each do |name, targets|
-						provisions[name] = Alias.new(Array(targets), self)
+						provisions[name] = Alias.new(name, self, Array(targets))
 					end
 				end
 			end

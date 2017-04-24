@@ -91,6 +91,47 @@ RSpec.describe Build::Dependency do
 		end
 	end
 	
+	describe "multiple provisions" do
+		let(:fruit) do
+			Package.new('fruit').tap do |package|
+				package.provides 'apple' do
+				end
+				
+				package.provides 'orange' do
+				end
+			end
+		end
+		
+		let(:salad) do
+			Package.new('salad').tap do |package|
+				package.depends 'apple'
+				package.depends 'orange'
+				package.provides 'salad'
+			end
+		end
+		
+		let(:lunch) do
+			Package.new('lunch').tap do |package|
+				package.depends 'apple'
+				package.depends 'salad'
+				package.provides 'lunch'
+			end
+		end
+		
+		let(:chain) {Build::Dependency::Chain.new(['lunch'], [fruit, salad, lunch])}
+		
+		it "should include both provisions" do
+			expect(chain.provisions.count).to be == 4
+			expect(chain.provisions.collect(&:name)).to be == ['apple', 'orange', 'salad', 'lunch']
+		end
+		
+		it "should include both provisions in partial chain" do
+			partial_chain = chain.partial(['lunch'])
+			expect(partial_chain.provisions.count).to be == 4
+			expect(chain.provisions.collect(&:name)).to be == ['apple', 'orange', 'salad', 'lunch']
+		end
+	end
+	
 	it "should resolve aliases" do
 		apple = Package.new('apple')
 		apple.provides 'apple'
