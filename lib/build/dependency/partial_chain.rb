@@ -20,8 +20,6 @@
 
 require_relative 'chain'
 
-require 'pry'
-
 module Build
 	module Dependency
 		class Chain
