@@ -126,9 +126,9 @@ RSpec.describe Build::Dependency do
 		end
 		
 		it "should include both provisions in partial chain" do
-			partial_chain = chain.partial(['lunch'])
-			expect(partial_chain.provisions.count).to be == 4
-			expect(chain.provisions.collect(&:name)).to be == ['apple', 'orange', 'salad', 'lunch']
+			partial_chain = chain.partial(lunch)
+			expect(partial_chain.provisions.count).to be == 3
+			expect(partial_chain.provisions.collect(&:name)).to be == ['apple', 'orange', 'salad']
 		end
 	end
 	

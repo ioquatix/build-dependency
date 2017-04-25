@@ -23,8 +23,8 @@ require_relative 'chain'
 module Build
 	module Dependency
 		class Chain
-			def partial(targets)
-				PartialChain.expand(self, targets)
+			def partial(provider)
+				PartialChain.expand(self, provider.targets)
 			end
 		end
 		
@@ -45,9 +45,6 @@ module Build
 				
 				# The list of targets that needs to be satisfied:
 				@targets = targets.collect{|target| Target[target]}
-				
-				# This is a list of all top level providers. We will expand all children of these packages, but we will ignore private targets of any others.
-				@top = @targets.map{|target| @chain.resolved[target]}
 				
 				expand_top
 			end
@@ -78,7 +75,7 @@ module Build
 			end
 			
 			def expand(target, parent)
-				unless @top.include?(parent)
+				unless @targets.include?(target)
 					return if target.private?
 				end
 				

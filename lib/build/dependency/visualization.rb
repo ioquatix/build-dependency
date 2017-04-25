@@ -119,6 +119,12 @@ module Build
 					end
 				end
 				
+				chain.provisions.each do |provision|
+					node = graph.nodes[provision.name.to_s]
+					
+					node.attributes.update(penwidth: 2.0)
+				end
+				
 				# Put all targets at the same level so as to not make the graph too confusingraph.
 				done = Set.new
 				chain.ordered.each do |resolution|

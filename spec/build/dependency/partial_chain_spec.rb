@@ -24,20 +24,44 @@ RSpec.describe Build::Dependency::PartialChain do
 		
 		let(:chain) {Build::Dependency::Chain.expand(['app', 'lib'], packages)}
 		
-		subject {described_class.new(chain, ['app'])}
-	
+		it "should generate full list of ordered providers" do
+			expect(chain.ordered).to be == [
+				Build::Dependency::Resolution.new(variant, Build::Dependency::Target.new('Variant/debug')),
+				Build::Dependency::Resolution.new(platform, Build::Dependency::Target.new('Platform/linux')),
+				Build::Dependency::Resolution.new(compiler, Build::Dependency::Target.new("Language/C++17")),
+				Build::Dependency::Resolution.new(lib, Build::Dependency::Target.new('lib')),
+				Build::Dependency::Resolution.new(app, Build::Dependency::Target.new('app')),
+			]
+		end
+		
+		it "should generate a full list of provisions" do
+			expect(chain.provisions).to be == [
+				variant.provision_for(Build::Dependency::Target['Variant/debug']),
+				platform.provision_for(Build::Dependency::Target['Platform/linux']),
+				compiler.provision_for(Build::Dependency::Target['Language/C++17']),
+				lib.provision_for(Build::Dependency::Target.new('lib')),
+				compiler.provision_for(Build::Dependency::Target['Language/C++14']),
+				app.provision_for(Build::Dependency::Target.new('app')),
+			]
+			
+			graph = visualization.generate(chain)
+			
+			Graphviz::output(graph, path: "app-chain-full.pdf")
+		end
+		
+		subject {described_class.new(chain, app.targets)}
+		
 		it "should select app packages" do
 			expect(subject.ordered).to be == [
+				Build::Dependency::Resolution.new(variant, Build::Dependency::Target.new('Variant/debug')),
+				Build::Dependency::Resolution.new(platform, Build::Dependency::Target.new('Platform/linux')),
 				Build::Dependency::Resolution.new(lib, Build::Dependency::Target.new('lib')),
-				Build::Dependency::Resolution.new(variant, Build::Dependency::Target.new(:variant)),
-				Build::Dependency::Resolution.new(platform, Build::Dependency::Target.new(:platform)),
 				Build::Dependency::Resolution.new(compiler, Build::Dependency::Target.new("Language/C++14")),
-				Build::Dependency::Resolution.new(app, Build::Dependency::Target.new('app')),
 			]
 			
 			graph = visualization.generate(subject)
 			
-			Graphviz::output(graph, path: "app-chain.svg")
+			Graphviz::output(graph, path: "app-chain-partial.pdf")
 		end
 	end
 	
@@ -58,7 +82,7 @@ RSpec.describe Build::Dependency::PartialChain do
 		let(:c) do
 			Package.new('c').tap do |package|
 				package.provides 'c'
-				package.depends 'b', private: true
+				package.depends 'b'
 			end
 		end
 		
@@ -71,28 +95,22 @@ RSpec.describe Build::Dependency::PartialChain do
 		
 		let(:chain) {Build::Dependency::Chain.expand(['d'], [a, b, c, d])}
 		
-		it "should resolve dependency" do
-			partial_chain = chain.partial(['a'])
+		it "should include direct private dependencies" do
+			partial_chain = chain.partial(b)
 			
 			expect(partial_chain.ordered.collect(&:first)).to be == [a]
 		end
 		
-		it "should include direct private dependencies" do
-			partial_chain = chain.partial(['b'])
+		it "shouldn't include nested private dependencies" do
+			partial_chain = chain.partial(c)
 			
-			expect(partial_chain.ordered.collect(&:first)).to be == [a, b]
+			expect(partial_chain.ordered.collect(&:first)).to be == [b]
 		end
 		
-		it "shouldn't follow nested private dependencies" do
-			partial_chain = chain.partial(['c'])
+		it "should follow non-private dependencies" do
+			partial_chain = chain.partial(d)
 			
 			expect(partial_chain.ordered.collect(&:first)).to be == [b, c]
-		end
-		
-		it "shouldn't follow direct private dependencies" do
-			partial_chain = chain.partial(['d'])
-			
-			expect(partial_chain.ordered.collect(&:first)).to be == [c, d]
 		end
 	end
 end
