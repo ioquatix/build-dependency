@@ -21,7 +21,7 @@
 RSpec.describe Build::Dependency do
 	describe "valid dependency resolution" do
 		let(:a) do
-			Package.new.tap do |package|
+			Package.new('apple-tree').tap do |package|
 				package.provides 'apple' do
 					fruit ['apple']
 				end
@@ -29,7 +29,7 @@ RSpec.describe Build::Dependency do
 		end
 		
 		let(:b) do
-			Package.new.tap do |package|
+			Package.new('orange-tree').tap do |package|
 				package.provides 'orange' do
 					fruit ['orange']
 				end
@@ -37,7 +37,7 @@ RSpec.describe Build::Dependency do
 		end
 		
 		let(:c) do
-			Package.new.tap do |package|
+			Package.new('blender').tap do |package|
 				package.provides 'fruit-juice' do
 					juice ['ice', 'cold']
 				end
@@ -54,7 +54,7 @@ RSpec.describe Build::Dependency do
 		end
 		
 		let(:d) do
-			Package.new.tap do |package|
+			Package.new('bakery').tap do |package|
 				package.provides 'pie'
 				package.depends 'apple'
 			end
@@ -65,6 +65,12 @@ RSpec.describe Build::Dependency do
 			
 			expect(chain.unresolved).to be == []
 			expect(chain.ordered.collect(&:first)).to be == [a, d]
+		end
+		
+		it "should format nicely" do
+			chain = Build::Dependency::Chain.expand(['fruit-juice'], [a, b, c])
+			resolution = chain.ordered.first
+			expect(resolution.to_s).to be == 'resolution "apple-tree" -> "apple"'
 		end
 	end
 	

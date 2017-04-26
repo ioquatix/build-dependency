@@ -36,11 +36,11 @@ RSpec.describe Build::Dependency::PartialChain do
 		
 		it "should generate a full list of provisions" do
 			expect(chain.provisions).to be == [
-				variant.provision_for(Build::Dependency::Depends['Variant/debug']),
-				platform.provision_for(Build::Dependency::Depends['Platform/linux']),
-				compiler.provision_for(Build::Dependency::Depends['Language/C++17']),
+				variant.provision_for(Build::Dependency::Depends.new('Variant/debug')),
+				platform.provision_for(Build::Dependency::Depends.new('Platform/linux')),
+				compiler.provision_for(Build::Dependency::Depends.new('Language/C++17')),
 				lib.provision_for(Build::Dependency::Depends.new('lib')),
-				compiler.provision_for(Build::Dependency::Depends['Language/C++14']),
+				compiler.provision_for(Build::Dependency::Depends.new('Language/C++14')),
 				app.provision_for(Build::Dependency::Depends.new('app')),
 			]
 			

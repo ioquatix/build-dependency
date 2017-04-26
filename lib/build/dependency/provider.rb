@@ -23,7 +23,7 @@ require 'set'
 module Build
 	module Dependency
 		def self.included(klass)
-			klass.include(Unit)
+			klass.include(Provider)
 		end
 		
 		# A provision is a thing which satisfies a dependency.
@@ -31,17 +31,29 @@ module Build
 			def alias?
 				false
 			end
+			
+			def to_s
+				"provision #{name.inspect}"
+			end
 		end
 		
 		Alias = Struct.new(:name, :provider, :dependencies) do
 			def alias?
 				true
 			end
+			
+			def to_s
+				"alias #{name.inspect} -> #{dependencies.collect(&:inspect).join(', ')}"
+			end
 		end
 		
 		Resolution = Struct.new(:provider, :dependency) do
 			def name
 				dependency.name
+			end
+			
+			def to_s
+				"resolution #{provider.name.inspect} -> #{dependency.name.inspect}"
 			end
 		end
 		
@@ -54,6 +66,14 @@ module Build
 			
 			attr :options
 			
+			def to_s
+				if @options.any?
+					"depends on #{name.inspect} #{@options.inspect}"
+				else
+					"depends on #{name.inspect}"
+				end
+			end
+			
 			def private?
 				@options[:private]
 			end
@@ -62,12 +82,12 @@ module Build
 				name.is_a?(Symbol)
 			end
 			
-			def self.[] name_or_dependency
+			def self.[](name_or_dependency)
 				name_or_dependency.is_a?(self) ? name_or_dependency : self.new(name_or_dependency)
 			end
 		end
 		
-		module Unit
+		module Provider
 			def freeze
 				return unless frozen?
 				
