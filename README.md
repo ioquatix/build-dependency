@@ -10,15 +10,15 @@ Build::Dependency provides dependency resolution algorithms.
 
 Add this line to your application's Gemfile:
 
-		gem 'build-dependency'
+	gem 'build-dependency'
 
 And then execute:
 
-		$ bundle
+	$ bundle
 
 Or install it yourself as:
 
-		$ gem install build-dependency
+	$ gem install build-dependency
 
 ## Usage
 
@@ -26,7 +26,15 @@ A dependency graph is a DAG (directed acyclic graph), such that if `A` depends o
 
 A dependency list is an ordered list of dependencies, such that if `A` depends on `B`, `B` will be listed earlier than `A`.
 
-![Example Dependency Graph](transform-flow-structure.png)
+A dependency chain is the result of traversing the dependency graph from a given set of dependencies. It contains an ordered list of providers, a list of specific provisions.
+
+![Full Dependency Graph](full.svg)
+
+A private dependency is not traversed when creating a partial chain. When building a partial chain for `app`, we don't follow `lib`'s private dependency on `Language/C++17`.
+
+![Partial Dependency Graph](partial.svg)
+
+The orange box is the top level dependency, the grey box is an alias, the blue box is a specific provider, and the bold boxes are specific provisions which are being included.
 
 ### Model
 
