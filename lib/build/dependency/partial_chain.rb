@@ -24,12 +24,12 @@ module Build
 	module Dependency
 		class Chain
 			def partial(provider)
-				PartialChain.expand(self, provider.targets)
+				PartialChain.expand(self, provider.dependencies)
 			end
 		end
 		
 		class PartialChain < Resolver
-			# An `UnresolvedDependencyError` will be thrown if there are any unresolved targets.
+			# An `UnresolvedDependencyError` will be thrown if there are any unresolved dependencies.
 			def self.expand(*args)
 				chain = self.new(*args)
 				
@@ -38,13 +38,13 @@ module Build
 				return chain
 			end
 			
-			def initialize(chain, targets)
+			def initialize(chain, dependencies)
 				super()
 				
 				@chain = chain
 				
-				# The list of targets that needs to be satisfied:
-				@targets = targets.collect{|target| Target[target]}
+				# The list of dependencies that needs to be satisfied:
+				@dependencies = dependencies.collect{|dependency| Depends[dependency]}
 				
 				expand_top
 			end
@@ -53,7 +53,7 @@ module Build
 				@chain.selection
 			end
 			
-			attr :targets
+			attr :dependencies
 			
 			def providers
 				@chain.providers
@@ -63,7 +63,7 @@ module Build
 				return unless frozen?
 				
 				@chain.freeze
-				@targets.freeze
+				@dependencies.freeze
 				
 				super
 			end
@@ -71,24 +71,24 @@ module Build
 			protected
 			
 			def expand_top
-				expand_nested(@targets, TOP)
+				expand_nested(@dependencies, TOP)
 			end
 			
-			def expand(target, parent)
-				unless @targets.include?(target)
-					return if target.private?
+			def expand(dependency, parent)
+				unless @dependencies.include?(dependency)
+					return if dependency.private?
 				end
 				
-				super(target, parent)
+				super(dependency, parent)
 			end
 			
-			def find_provider(target, parent)
-				@chain.resolved[target]
+			def find_provider(dependency, parent)
+				@chain.resolved[dependency]
 			end
 			
-			def provision_for(provider, target)
-				# @chain.resolved[provider] does work, but it points to the most recently added provision, but we want the provision related to the specific target.
-				provider.provision_for(target)
+			def provision_for(provider, dependency)
+				# @chain.resolved[provider] does work, but it points to the most recently added provision, but we want the provision related to the specific dependency.
+				provider.provision_for(dependency)
 			end
 		end
 	end

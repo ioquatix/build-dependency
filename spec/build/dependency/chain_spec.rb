@@ -82,8 +82,8 @@ RSpec.describe Build::Dependency do
 			salad.provides 'salad'
 		
 			chain = Build::Dependency::Chain.new(['salad'], [apple, bananna, salad])
-			expect(chain.unresolved.first).to be == [Build::Dependency::Target.new("fruit"), salad]
-			expect(chain.conflicts).to be == {Build::Dependency::Target.new("fruit") => [apple, bananna]}
+			expect(chain.unresolved.first).to be == [Build::Dependency::Depends.new("fruit"), salad]
+			expect(chain.conflicts).to be == {Build::Dependency::Depends.new("fruit") => [apple, bananna]}
 		
 			chain = Build::Dependency::Chain.new(['salad'], [apple, bananna, salad], ['apple'])
 			expect(chain.unresolved).to be == []
@@ -150,8 +150,8 @@ RSpec.describe Build::Dependency do
 		expect(chain.conflicts).to be == {}
 		
 		expect(chain.ordered.size).to be == 2
-		expect(chain.ordered[0]).to be == Build::Dependency::Resolution.new(apple, Build::Dependency::Target.new("apple"))
-		expect(chain.ordered[1]).to be == Build::Dependency::Resolution.new(salad, Build::Dependency::Target.new("salad"))
+		expect(chain.ordered[0]).to be == Build::Dependency::Resolution.new(apple, Build::Dependency::Depends.new("apple"))
+		expect(chain.ordered[1]).to be == Build::Dependency::Resolution.new(salad, Build::Dependency::Depends.new("salad"))
 	end
 	
 	it "should select dependencies with high priority" do
@@ -169,7 +169,7 @@ RSpec.describe Build::Dependency do
 		expect(chain.conflicts).to be == {}
 		
 		# Should select higher priority package by default:
-		expect(chain.ordered).to be == [Build::Dependency::Resolution.new(good_apple, Build::Dependency::Target.new('apple'))]
+		expect(chain.ordered).to be == [Build::Dependency::Resolution.new(good_apple, Build::Dependency::Depends.new('apple'))]
 	end
 	
 	it "should expose direct dependencies" do
@@ -194,9 +194,9 @@ RSpec.describe Build::Dependency do
 		expect(chain.unresolved).to be == []
 		expect(chain.conflicts).to be == {}
 		expect(chain.ordered).to be == [
-			Build::Dependency::Resolution.new(system, Build::Dependency::Target.new('clang')),
-			Build::Dependency::Resolution.new(library, Build::Dependency::Target.new('library')),
-			Build::Dependency::Resolution.new(application, Build::Dependency::Target.new('application')),
+			Build::Dependency::Resolution.new(system, Build::Dependency::Depends.new('clang')),
+			Build::Dependency::Resolution.new(library, Build::Dependency::Depends.new('library')),
+			Build::Dependency::Resolution.new(application, Build::Dependency::Depends.new('application')),
 		]
 	end
 end

@@ -24,7 +24,7 @@ module Build
 	module Dependency
 		class UnresolvedDependencyError < StandardError
 			def initialize(chain)
-				super "Unresolved target chain: #{chain.unresolved.inspect}!"
+				super "Unresolved dependency chain: #{chain.unresolved.inspect}!"
 				
 				@chain = chain
 			end
@@ -32,7 +32,7 @@ module Build
 			attr :chain
 		end
 		
-		TOP = Target.new("<top>").freeze
+		TOP = Depends.new("<top>").freeze
 		
 		class Resolver
 			def initialize
@@ -63,58 +63,58 @@ module Build
 			
 			protected
 			
-			def expand_nested(targets, provider)
-				targets.each do |target|
-					expand(Target[target], provider)
+			def expand_nested(dependencies, provider)
+				dependencies.each do |dependency|
+					expand(Depends[dependency], provider)
 				end
 			end
 			
-			def expand(target, parent)
-				# puts "** Expanding #{target.inspect} from #{parent.inspect} (force: #{force} private: #{target.private?})"
+			def expand(dependency, parent)
+				# puts "** Expanding #{dependency.inspect} from #{parent.inspect} (private: #{dependency.private?})"
 				
-				if @resolved.include?(target)
-					# puts "** Already resolved target!"
+				if @resolved.include?(dependency)
+					# puts "** Already resolved dependency!"
 					
 					return
 				end
 				
-				provider = find_provider(target, parent)
+				provider = find_provider(dependency, parent)
 				
 				if provider == nil
 					# puts "** Couldn't find provider -> unresolved"
-					@unresolved << [target, parent]
+					@unresolved << [dependency, parent]
 					return nil
 				end
 				
-				provision = provision_for(provider, target)
+				provision = provision_for(provider, dependency)
 				
-				# We will now satisfy this target by satisfying any dependent targets, but we no longer need to revisit this one.
-				# puts "** Resolved #{target} (#{provision.inspect})"
-				@resolved[target] = provider
+				# We will now satisfy this dependency by satisfying any dependent dependencies, but we no longer need to revisit this one.
+				# puts "** Resolved #{dependency} (#{provision.inspect})"
+				@resolved[dependency] = provider
 				
 				# If the provision was an Alias, make sure to resolve the alias first:
-				if Alias === provision
-					# puts "** Resolving alias #{provision} (#{provision.targets.inspect})"
-					expand_nested(provision.targets, provider)
+				if provision.alias?
+					# puts "** Resolving alias #{provision} (#{provision.dependencies.inspect})"
+					expand_nested(provision.dependencies, provider)
 				end
 				
 				# puts "** Checking for #{provider.inspect} in #{resolved.inspect}"
 				unless @resolved.include?(provider)
-					# We are now satisfying the provider by expanding all its own targets:
+					# We are now satisfying the provider by expanding all its own dependencies:
 					@resolved[provider] = provision
 					
-					# Make sure we satisfy the provider's targets first:
-					expand_nested(provider.targets, provider)
+					# Make sure we satisfy the provider's dependencies first:
+					expand_nested(provider.dependencies, provider)
 					
-					# puts "** Appending #{target} -> ordered"
+					# puts "** Appending #{dependency} -> ordered"
 					
 					# Add the provider to the ordered list.
-					@ordered << Resolution.new(provider, target)
+					@ordered << Resolution.new(provider, dependency)
 				end
 				
 				# This goes here because we want to ensure 1/ that if 
-				unless provision == nil or Alias === provision
-					# puts "** Appending #{target} -> provisions"
+				unless provision == nil or provision.alias?
+					# puts "** Appending #{dependency} -> provisions"
 					
 					# Add the provision to the set of required provisions.
 					@provisions << provision
@@ -125,7 +125,7 @@ module Build
 		end
 		
 		class Chain < Resolver
-			# An `UnresolvedDependencyError` will be thrown if there are any unresolved targets.
+			# An `UnresolvedDependencyError` will be thrown if there are any unresolved dependencies.
 			def self.expand(*args)
 				chain = self.new(*args)
 				
@@ -138,30 +138,30 @@ module Build
 				return chain
 			end
 			
-			def initialize(targets, providers, selection = [])
+			def initialize(dependencies, providers, selection = [])
 				super()
 				
-				# Explicitly selected targets which will be used when resolving ambiguity:
+				# Explicitly selected dependencies which will be used when resolving ambiguity:
 				@selection = Set.new(selection)
 				
-				# The list of targets that needs to be satisfied:
-				@targets = targets.collect{|target| Target[target]}
+				# The list of dependencies that needs to be satisfied:
+				@dependencies = dependencies.collect{|dependency| Depends[dependency]}
 				
-				# The available providers which match up to required targets:
+				# The available providers which match up to required dependencies:
 				@providers = providers
 				
 				expand_top
 			end
 			
 			attr :selection
-			attr :targets
+			attr :dependencies
 			attr :providers
 			
 			def freeze
 				return unless frozen?
 				
 				@selection.freeze
-				@targets.freeze
+				@dependencies.freeze
 				@providers.freeze
 				
 				super
@@ -170,9 +170,9 @@ module Build
 			protected
 			
 			def expand_top
-				# puts "Expanding #{@targets.inspect}"
+				# puts "Expanding #{@dependencies.inspect}"
 				
-				expand_nested(@targets, TOP)
+				expand_nested(@dependencies, TOP)
 			end
 			
 			def filter_by_priority(viable_providers)
@@ -190,9 +190,9 @@ module Build
 				return viable_providers.select{|provider| @selection.include? provider.name}
 			end
 			
-			def find_provider(target, parent)
-				# Mostly, only one package will satisfy the target...
-				viable_providers = @providers.select{|provider| provider.provides? target}
+			def find_provider(dependency, parent)
+				# Mostly, only one package will satisfy the dependency...
+				viable_providers = @providers.select{|provider| provider.provides? dependency}
 				
 				# puts "** Found #{viable_providers.collect(&:name).join(', ')} viable providers."
 				
@@ -211,14 +211,14 @@ module Build
 					
 					if explicit_providers.size == 0
 						# No provider was explicitly specified, thus we require explicit conflict resolution:
-						@conflicts[target] = viable_providers
+						@conflicts[dependency] = viable_providers
 						return nil
 					elsif explicit_providers.size == 1
 						# The best outcome, a specific provider was named:
 						return explicit_providers.first
 					else
-						# Multiple providers were explicitly mentioned that satisfy the target.
-						@conflicts[target] = explicit_providers
+						# Multiple providers were explicitly mentioned that satisfy the dependency.
+						@conflicts[dependency] = explicit_providers
 						return nil
 					end
 				else
@@ -226,8 +226,8 @@ module Build
 				end
 			end
 			
-			def provision_for(provider, target)
-				provider.provision_for(target)
+			def provision_for(provider, dependency)
+				provider.provision_for(dependency)
 			end
 		end
 	end

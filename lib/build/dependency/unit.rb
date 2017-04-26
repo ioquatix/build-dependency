@@ -26,18 +26,26 @@ module Build
 			klass.include(Unit)
 		end
 		
-		# A provision is a thing which satisfies a target.
-		Provision = Struct.new(:name, :provider, :value)
-		
-		Alias = Struct.new(:name, :provider, :targets)
-		
-		Resolution = Struct.new(:provider, :target) do
-			def name
-				target.name
+		# A provision is a thing which satisfies a dependency.
+		Provision = Struct.new(:name, :provider, :value) do
+			def alias?
+				false
 			end
 		end
 		
-		Target = Struct.new(:name) do
+		Alias = Struct.new(:name, :provider, :dependencies) do
+			def alias?
+				true
+			end
+		end
+		
+		Resolution = Struct.new(:provider, :dependency) do
+			def name
+				dependency.name
+			end
+		end
+		
+		Depends = Struct.new(:name) do
 			def initialize(name, **options)
 				super(name)
 				
@@ -54,8 +62,8 @@ module Build
 				name.is_a?(Symbol)
 			end
 			
-			def self.[] name_or_target
-				name_or_target.is_a?(self) ? name_or_target : self.new(name_or_target)
+			def self.[] name_or_dependency
+				name_or_dependency.is_a?(self) ? name_or_dependency : self.new(name_or_dependency)
 			end
 		end
 		
@@ -64,7 +72,7 @@ module Build
 				return unless frozen?
 				
 				provisions.freeze
-				targets.freeze
+				dependencies.freeze
 				
 				super
 			end
@@ -85,17 +93,17 @@ module Build
 			end
 			
 			# @return Set<Dependency>
-			def targets
-				@targets ||= Set.new
+			def dependencies
+				@dependencies ||= Set.new
 			end
 			
 			# Does this unit provide the named thing?
-			def provides?(target)
-				provisions.key?(target.name)
+			def provides?(dependency)
+				provisions.key?(dependency.name)
 			end
 			
-			def provision_for(target)
-				provisions[target.name]
+			def provision_for(dependency)
+				provisions[dependency.name]
 			end
 			
 			# Mark this unit as providing the named thing, with an optional block.
@@ -107,20 +115,20 @@ module Build
 				else
 					aliases = name_or_aliases
 					
-					aliases.each do |name, targets|
-						provisions[name] = Alias.new(name, self, Array(targets))
+					aliases.each do |name, dependencies|
+						provisions[name] = Alias.new(name, self, Array(dependencies))
 					end
 				end
 			end
 			
 			def depends(*names, **options)
 				names.each do |name|
-					targets << Target.new(name, **options)
+					dependencies << Depends.new(name, **options)
 				end
 			end
 			
 			def depends?(name)
-				targets.include?(name)
+				dependencies.include?(name)
 			end
 		end
 	end

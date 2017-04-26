@@ -37,7 +37,7 @@ module Build
 					:fillcolor => 'lightgrey',
 				)
 				
-				@target_attributes = @base_attributes.merge(
+				@dependency_attributes = @base_attributes.merge(
 					:fillcolor => 'orange',
 				)
 				
@@ -67,7 +67,7 @@ module Build
 			
 			attr :alias_attributes
 			
-			attr :target_attributes
+			attr :dependency_attributes
 			attr :selection_attributes
 			attr :private_edge_attributes
 			
@@ -79,21 +79,21 @@ module Build
 					provider = resolution.provider
 					name = provider.name
 					
-					# Provider is the target that provides the target referred to by name.
+					# Provider is the dependency that provides the dependency referred to by name.
 					node = graph.add_node(name.to_s, @base_attributes.dup)
 					
-					if chain.targets.include?(resolution.target)
-						node.attributes.update(@target_attributes)
+					if chain.dependencies.include?(resolution.dependency)
+						node.attributes.update(@dependency_attributes)
 					elsif chain.selection.include?(provider.name)
 						node.attributes.update(@selection_attributes)
 					end
 					
-					# A provision has targets...
-					provider.targets.each do |target|
-						if target_node = graph.nodes[target.name.to_s]
-							edge = node.connect(target_node)
+					# A provision has dependencies...
+					provider.dependencies.each do |dependency|
+						if dependency_node = graph.nodes[dependency.name.to_s]
+							edge = node.connect(dependency_node)
 							
-							if target.private?
+							if dependency.private?
 								edge.attributes.update(@private_edge_attributes)
 							end
 						end
@@ -105,7 +105,7 @@ module Build
 						
 						provides_node = graph.nodes[provision_name.to_s] || graph.add_node(provision_name.to_s, @provision_attributes)
 						
-						if Dependency::Alias === provision
+						if provision.alias?
 							provides_node.attributes = @alias_attributes
 						end
 						
@@ -125,7 +125,7 @@ module Build
 					node.attributes.update(penwidth: 2.0)
 				end
 				
-				# Put all targets at the same level so as to not make the graph too confusingraph.
+				# Put all dependencies at the same level so as to not make the graph too confusingraph.
 				done = Set.new
 				chain.ordered.each do |resolution|
 					provider = resolution.provider
@@ -133,13 +133,13 @@ module Build
 					
 					subgraph = graph.nodes[name] || graph.add_subgraph(name, :rank => :same)
 					
-					provider.targets.each do |target|
-						next if done.include? target
+					provider.dependencies.each do |dependency|
+						next if done.include? dependency
 						
-						done << target
+						done << dependency
 						
-						if target_node = graph.nodes[target.name.to_s]
-							subgraph.add_node(target_node.name)
+						if dependency_node = graph.nodes[dependency.name.to_s]
+							subgraph.add_node(dependency_node.name)
 						end
 					end
 				end

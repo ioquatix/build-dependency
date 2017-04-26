@@ -26,22 +26,22 @@ RSpec.describe Build::Dependency::PartialChain do
 		
 		it "should generate full list of ordered providers" do
 			expect(chain.ordered).to be == [
-				Build::Dependency::Resolution.new(variant, Build::Dependency::Target.new('Variant/debug')),
-				Build::Dependency::Resolution.new(platform, Build::Dependency::Target.new('Platform/linux')),
-				Build::Dependency::Resolution.new(compiler, Build::Dependency::Target.new("Language/C++17")),
-				Build::Dependency::Resolution.new(lib, Build::Dependency::Target.new('lib')),
-				Build::Dependency::Resolution.new(app, Build::Dependency::Target.new('app')),
+				Build::Dependency::Resolution.new(variant, Build::Dependency::Depends.new('Variant/debug')),
+				Build::Dependency::Resolution.new(platform, Build::Dependency::Depends.new('Platform/linux')),
+				Build::Dependency::Resolution.new(compiler, Build::Dependency::Depends.new("Language/C++17")),
+				Build::Dependency::Resolution.new(lib, Build::Dependency::Depends.new('lib')),
+				Build::Dependency::Resolution.new(app, Build::Dependency::Depends.new('app')),
 			]
 		end
 		
 		it "should generate a full list of provisions" do
 			expect(chain.provisions).to be == [
-				variant.provision_for(Build::Dependency::Target['Variant/debug']),
-				platform.provision_for(Build::Dependency::Target['Platform/linux']),
-				compiler.provision_for(Build::Dependency::Target['Language/C++17']),
-				lib.provision_for(Build::Dependency::Target.new('lib')),
-				compiler.provision_for(Build::Dependency::Target['Language/C++14']),
-				app.provision_for(Build::Dependency::Target.new('app')),
+				variant.provision_for(Build::Dependency::Depends['Variant/debug']),
+				platform.provision_for(Build::Dependency::Depends['Platform/linux']),
+				compiler.provision_for(Build::Dependency::Depends['Language/C++17']),
+				lib.provision_for(Build::Dependency::Depends.new('lib')),
+				compiler.provision_for(Build::Dependency::Depends['Language/C++14']),
+				app.provision_for(Build::Dependency::Depends.new('app')),
 			]
 			
 			graph = visualization.generate(chain)
@@ -49,14 +49,14 @@ RSpec.describe Build::Dependency::PartialChain do
 			Graphviz::output(graph, path: "app-chain-full.pdf")
 		end
 		
-		subject {described_class.new(chain, app.targets)}
+		subject {described_class.new(chain, app.dependencies)}
 		
 		it "should select app packages" do
 			expect(subject.ordered).to be == [
-				Build::Dependency::Resolution.new(variant, Build::Dependency::Target.new('Variant/debug')),
-				Build::Dependency::Resolution.new(platform, Build::Dependency::Target.new('Platform/linux')),
-				Build::Dependency::Resolution.new(lib, Build::Dependency::Target.new('lib')),
-				Build::Dependency::Resolution.new(compiler, Build::Dependency::Target.new("Language/C++14")),
+				Build::Dependency::Resolution.new(variant, Build::Dependency::Depends.new('Variant/debug')),
+				Build::Dependency::Resolution.new(platform, Build::Dependency::Depends.new('Platform/linux')),
+				Build::Dependency::Resolution.new(lib, Build::Dependency::Depends.new('lib')),
+				Build::Dependency::Resolution.new(compiler, Build::Dependency::Depends.new("Language/C++14")),
 			]
 			
 			graph = visualization.generate(subject)
@@ -65,7 +65,7 @@ RSpec.describe Build::Dependency::PartialChain do
 		end
 	end
 	
-	describe "private targets" do
+	describe "private dependencies" do
 		let(:a) do
 			Package.new('a').tap do |package|
 				package.provides 'a'
