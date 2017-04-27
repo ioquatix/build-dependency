@@ -1,5 +1,5 @@
 
-if ENV['COVERAGE']
+if ENV['COVERAGE'] || ENV['TRAVIS']
 	begin
 		require 'simplecov'
 		
