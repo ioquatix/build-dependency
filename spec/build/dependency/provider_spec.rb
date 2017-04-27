@@ -55,7 +55,7 @@ RSpec.describe Build::Dependency::Provider do
 		end
 		
 		it "should format nicely" do
-			expect(subject.to_s).to be == 'provision "c"'
+			expect(subject.to_s).to be == 'provides "c"'
 		end
 	end
 	
@@ -83,7 +83,7 @@ RSpec.describe Build::Dependency::Provider do
 		end
 		
 		it "should format nicely" do
-			expect(subject.to_s).to be == 'alias :platform -> "linux"'
+			expect(subject.to_s).to be == 'provides :platform -> "linux"'
 		end
 	end
 end
