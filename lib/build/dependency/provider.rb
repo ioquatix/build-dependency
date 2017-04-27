@@ -33,7 +33,7 @@ module Build
 			end
 			
 			def to_s
-				"provision #{name.inspect}"
+				"provides #{name.inspect}"
 			end
 		end
 		
@@ -43,7 +43,7 @@ module Build
 			end
 			
 			def to_s
-				"alias #{name.inspect} -> #{dependencies.collect(&:inspect).join(', ')}"
+				"provides #{name.inspect} -> #{dependencies.collect(&:inspect).join(', ')}"
 			end
 		end
 		
