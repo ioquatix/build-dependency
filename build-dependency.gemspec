@@ -6,7 +6,7 @@ Gem::Specification.new do |spec|
 	spec.version       = Build::Dependency::VERSION
 	spec.authors       = ["Samuel Williams"]
 	spec.email         = ["samuel.williams@oriontransfer.co.nz"]
-	spec.summary       = %q{A nested hash data structure for controlling build dependencys.}
+	spec.summary       = %q{A set of data structures and algorithms for dependency resolution.}
 	spec.homepage      = ""
 	spec.license       = "MIT"
 
