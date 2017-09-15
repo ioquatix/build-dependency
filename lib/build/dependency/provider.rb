@@ -64,6 +64,18 @@ module Build
 				@options = options
 			end
 			
+			def wildcard?
+				self.name.is_a?(String) and self.name.include?('*')
+			end
+			
+			def match?(name)
+				if wildcard?
+					File.fnmatch?(self.name, name)
+				else
+					self.name == name
+				end
+			end
+			
 			attr :options
 			
 			def to_s
@@ -82,8 +94,12 @@ module Build
 				name.is_a?(Symbol)
 			end
 			
-			def self.[](name_or_dependency)
-				name_or_dependency.is_a?(self) ? name_or_dependency : self.new(name_or_dependency)
+			class << self
+				undef []
+				
+				def [](name_or_dependency)
+					name_or_dependency.is_a?(self) ? name_or_dependency : self.new(name_or_dependency)
+				end
 			end
 		end
 		
@@ -119,28 +135,50 @@ module Build
 			
 			# Does this unit provide the named thing?
 			def provides?(dependency)
-				provisions.key?(dependency.name)
-			end
-			
-			def provision_for(dependency)
-				provisions[dependency.name]
-			end
-			
-			# Mark this unit as providing the named thing, with an optional block.
-			def provides(name_or_aliases, &block)
-				if String === name_or_aliases || Symbol === name_or_aliases
-					name = name_or_aliases
-					
-					provisions[name] = Provision.new(name, self, block)
+				if dependency.wildcard?
+					provisions.keys.any?{|key| dependency.match?(key)}
 				else
-					aliases = name_or_aliases
-					
-					aliases.each do |name, dependencies|
-						provisions[name] = Alias.new(name, self, Array(dependencies))
-					end
+					provisions.key?(dependency.name)
 				end
 			end
 			
+			def provisions_for(dependency)
+				return to_enum(:provisions_for, dependency) unless block_given?
+				
+				if dependency.wildcard?
+					provisions.each do |key,value|
+						yield value if dependency.match?(key)
+					end
+				else
+					yield provisions[dependency.name]
+				end
+			end
+			
+			# Add one or more provisions to the provider.
+			# @param [Array<String>] names the named provisions to add.
+			# @param [Hash<Symbol, Array>] aliases the aliases to add.
+			# @example A named provision.
+			# 	target.provides "Compiler/clang" do
+			# 		cxx "clang"
+			# 	end
+			# @example A symbolic provision.
+			# 	target.provides compiler: "Compiler/clang"
+			def provides(*names, **aliases, &block)
+				names.each do |name|
+					provisions[name] = Provision.new(name, self, block)
+				end
+				
+				aliases.each do |name, dependencies|
+					provisions[name] = Alias.new(name, self, Array(dependencies))
+				end
+			end
+			
+			# Add one or more dependencies to the provider.
+			# @param [Array<String>] names the dependency names to add.
+			# @example A named dependency.
+			# 	target.depends "Compiler/clang"
+			# @example A symbolic dependency.
+			# 	target.depends :compiler
 			def depends(*names, **options)
 				names.each do |name|
 					dependencies << Depends.new(name, **options)

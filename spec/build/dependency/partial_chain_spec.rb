@@ -36,13 +36,13 @@ RSpec.describe Build::Dependency::PartialChain do
 		
 		it "should generate a full list of provisions" do
 			expect(chain.provisions).to be == [
-				variant.provision_for(Build::Dependency::Depends.new('Variant/debug')),
-				platform.provision_for(Build::Dependency::Depends.new('Platform/linux')),
-				compiler.provision_for(Build::Dependency::Depends.new('Language/C++17')),
-				lib.provision_for(Build::Dependency::Depends.new('lib')),
-				compiler.provision_for(Build::Dependency::Depends.new('Language/C++14')),
-				app.provision_for(Build::Dependency::Depends.new('app')),
-			]
+				variant.provisions_for(Build::Dependency::Depends.new('Variant/debug')),
+				platform.provisions_for(Build::Dependency::Depends.new('Platform/linux')),
+				compiler.provisions_for(Build::Dependency::Depends.new('Language/C++17')),
+				lib.provisions_for(Build::Dependency::Depends.new('lib')),
+				compiler.provisions_for(Build::Dependency::Depends.new('Language/C++14')),
+				app.provisions_for(Build::Dependency::Depends.new('app')),
+			].collect(&:to_a).flatten
 			
 			graph = visualization.generate(chain)
 			

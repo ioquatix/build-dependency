@@ -53,6 +53,12 @@ RSpec.describe Build::Dependency do
 			expect(chain.unresolved).to be == []
 		end
 		
+		it "should resolve wildcard dependency chain" do
+			chain = Build::Dependency::Chain.expand(['fruit-*'], [a, b, c])
+			expect(chain.ordered.collect(&:first)).to be == [a, b, c]
+			expect(chain.unresolved).to be == []
+		end
+		
 		let(:d) do
 			Package.new('bakery').tap do |package|
 				package.provides 'pie'

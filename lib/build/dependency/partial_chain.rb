@@ -86,9 +86,9 @@ module Build
 				@chain.resolved[dependency]
 			end
 			
-			def provision_for(provider, dependency)
+			def provisions_for(provider, dependency)
 				# @chain.resolved[provider] does work, but it points to the most recently added provision, but we want the provision related to the specific dependency.
-				provider.provision_for(dependency)
+				provider.provisions_for(dependency)
 			end
 		end
 	end

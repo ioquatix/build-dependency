@@ -86,41 +86,41 @@ module Build
 					return nil
 				end
 				
-				provision = provision_for(provider, dependency)
-				
 				# We will now satisfy this dependency by satisfying any dependent dependencies, but we no longer need to revisit this one.
 				# puts "** Resolved #{dependency} (#{provision.inspect})"
 				@resolved[dependency] = provider
 				
-				# If the provision was an Alias, make sure to resolve the alias first:
-				if provision.alias?
-					# puts "** Resolving alias #{provision} (#{provision.dependencies.inspect})"
-					expand_nested(provision.dependencies, provider)
+				provisions_for(provider, dependency).each do |provision|
+					# If the provision was an Alias, make sure to resolve the alias first:
+					if provision.alias?
+						# puts "** Resolving alias #{provision} (#{provision.dependencies.inspect})"
+						expand_nested(provision.dependencies, provider)
+					end
+					
+					# puts "** Checking for #{provider.inspect} in #{resolved.inspect}"
+					unless @resolved.include?(provider)
+						# We are now satisfying the provider by expanding all its own dependencies:
+						@resolved[provider] = provision
+						
+						# Make sure we satisfy the provider's dependencies first:
+						expand_nested(provider.dependencies, provider)
+						
+						# puts "** Appending #{dependency} -> ordered"
+						
+						# Add the provider to the ordered list.
+						@ordered << Resolution.new(provider, dependency)
+					end
+					
+					# This goes here because we want to ensure 1/ that if 
+					unless provision == nil or provision.alias?
+						# puts "** Appending #{dependency} -> provisions"
+						
+						# Add the provision to the set of required provisions.
+						@provisions << provision
+					end
+					
+					# For both @ordered and @provisions, we ensure that for [...xs..., x, ...], x is satisfied by ...xs....
 				end
-				
-				# puts "** Checking for #{provider.inspect} in #{resolved.inspect}"
-				unless @resolved.include?(provider)
-					# We are now satisfying the provider by expanding all its own dependencies:
-					@resolved[provider] = provision
-					
-					# Make sure we satisfy the provider's dependencies first:
-					expand_nested(provider.dependencies, provider)
-					
-					# puts "** Appending #{dependency} -> ordered"
-					
-					# Add the provider to the ordered list.
-					@ordered << Resolution.new(provider, dependency)
-				end
-				
-				# This goes here because we want to ensure 1/ that if 
-				unless provision == nil or provision.alias?
-					# puts "** Appending #{dependency} -> provisions"
-					
-					# Add the provision to the set of required provisions.
-					@provisions << provision
-				end
-				
-				# For both @ordered and @provisions, we ensure that for [...xs..., x, ...], x is satisfied by ...xs....
 			end
 		end
 		
@@ -226,8 +226,8 @@ module Build
 				end
 			end
 			
-			def provision_for(provider, dependency)
-				provider.provision_for(dependency)
+			def provisions_for(provider, dependency)
+				provider.provisions_for(dependency)
 			end
 		end
 	end
