@@ -69,7 +69,7 @@ module Build
 			end
 			
 			def match?(name)
-				if wildcard?
+				if wildcard? and name.is_a?(String)
 					File.fnmatch?(self.name, name)
 				else
 					self.name == name
