@@ -69,16 +69,6 @@ module Build
 				end
 			end
 			
-			def expand_provider(provider, dependency, parent)
-				# We will now satisfy this dependency by satisfying any dependent dependencies, but we no longer need to revisit this one.
-				# puts "** Resolved #{dependency} (#{provision.inspect})"
-				@resolved[dependency] = provider
-				
-				provision = provision_for(provider, dependency)
-				
-				expand_provision(provision, dependency)
-			end
-			
 			def expand_provision(provision, dependency)
 				provider = provision.provider
 				
@@ -114,10 +104,10 @@ module Build
 			end
 			
 			def expand(dependency, parent)
-				puts "** Expanding #{dependency.inspect} from #{parent.inspect} (private: #{dependency.private?})"
+				# puts "** Expanding #{dependency.inspect} from #{parent.inspect} (private: #{dependency.private?})"
 				
 				if @resolved.include?(dependency)
-					puts "** Already resolved dependency!"
+					# puts "** Already resolved dependency!"
 					
 					return nil
 				end
@@ -130,7 +120,7 @@ module Build
 					
 					expand_provision(provision, dependency)
 				end or begin
-					puts "** Couldn't find_provider(#{dependency}, #{parent}) -> unresolved"
+					# puts "** Couldn't find_provider(#{dependency}, #{parent}) -> unresolved"
 					@unresolved << [dependency, parent]
 				end
 			end
@@ -202,11 +192,30 @@ module Build
 				return viable_providers.select{|provider| @selection.include? provider.name}
 			end
 			
+			# Resolve a dependency into one or more provisions:
 			def expand_dependency(dependency, parent)
+				if dependency.wildcard?
+					matched = false
+					
+					@providers.each do |provider|
+						provider.provisions.each do |name, provision|
+							if dependency.match?(name)
+								expand_dependency(Depends[provision.name], parent) do |provision|
+									matched = true
+									
+									yield provision
+								end
+							end
+						end
+					end
+					
+					return matched
+				end
+				
 				# Mostly, only one package will satisfy the dependency...
 				viable_providers = @providers.select{|provider| provider.provides? dependency}
 				
-				puts "** Found #{viable_providers.collect(&:name).join(', ')} viable providers."
+				# puts "** Found #{viable_providers.collect(&:name).join(', ')} viable providers."
 				
 				if viable_providers.size == 1
 					provider = viable_providers.first
