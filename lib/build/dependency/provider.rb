@@ -138,7 +138,7 @@ module Build
 			end
 			
 			def filter(dependency)
-				provisions.select{|key,value| dependency.match?(key)}
+				provisions.select{|name, provision| dependency.match?(name)}
 			end
 			
 			# Does this unit provide the named thing?
