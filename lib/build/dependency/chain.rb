@@ -69,57 +69,61 @@ module Build
 				end
 			end
 			
-			def expand(dependency, parent)
-				# puts "** Expanding #{dependency.inspect} from #{parent.inspect} (private: #{dependency.private?})"
-				
-				if @resolved.include?(dependency)
-					# puts "** Already resolved dependency!"
-					
-					return
-				end
-				
-				provider = find_provider(dependency, parent)
-				
-				if provider == nil
-					# puts "** Couldn't find provider -> unresolved"
-					@unresolved << [dependency, parent]
-					return nil
-				end
-				
+			def expand_provider(provider, dependency, parent)
 				# We will now satisfy this dependency by satisfying any dependent dependencies, but we no longer need to revisit this one.
 				# puts "** Resolved #{dependency} (#{provision.inspect})"
 				@resolved[dependency] = provider
 				
-				provisions_for(provider, dependency).each do |provision|
-					# If the provision was an Alias, make sure to resolve the alias first:
-					if provision.alias?
-						# puts "** Resolving alias #{provision} (#{provision.dependencies.inspect})"
-						expand_nested(provision.dependencies, provider)
-					end
+				provision = provision_for(provider, dependency)
+				
+				# If the provision was an Alias, make sure to resolve the alias first:
+				if provision.alias?
+					# puts "** Resolving alias #{provision} (#{provision.dependencies.inspect})"
+					expand_nested(provision.dependencies, provider)
+				end
+				
+				# puts "** Checking for #{provider.inspect} in #{resolved.inspect}"
+				unless @resolved.include?(provider)
+					# We are now satisfying the provider by expanding all its own dependencies:
+					@resolved[provider] = provision
 					
-					# puts "** Checking for #{provider.inspect} in #{resolved.inspect}"
-					unless @resolved.include?(provider)
-						# We are now satisfying the provider by expanding all its own dependencies:
-						@resolved[provider] = provision
-						
-						# Make sure we satisfy the provider's dependencies first:
-						expand_nested(provider.dependencies, provider)
-						
-						# puts "** Appending #{dependency} -> ordered"
-						
-						# Add the provider to the ordered list.
-						@ordered << Resolution.new(provider, dependency)
-					end
+					# Make sure we satisfy the provider's dependencies first:
+					expand_nested(provider.dependencies, provider)
 					
-					# This goes here because we want to ensure 1/ that if 
-					unless provision == nil or provision.alias?
-						# puts "** Appending #{dependency} -> provisions"
-						
-						# Add the provision to the set of required provisions.
-						@provisions << provision
-					end
+					# puts "** Appending #{dependency} -> ordered"
 					
-					# For both @ordered and @provisions, we ensure that for [...xs..., x, ...], x is satisfied by ...xs....
+					# Add the provider to the ordered list.
+					@ordered << Resolution.new(provider, dependency)
+				end
+				
+				# This goes here because we want to ensure 1/ that if 
+				unless provision == nil or provision.alias?
+					# puts "** Appending #{dependency} -> provisions"
+					
+					# Add the provision to the set of required provisions.
+					@provisions << provision
+				end
+				
+				# For both @ordered and @provisions, we ensure that for [...xs..., x, ...], x is satisfied by ...xs....
+			end
+			
+			def expand(dependency, parent)
+				puts "** Expanding #{dependency.inspect} from #{parent.inspect} (private: #{dependency.private?})"
+				
+				if @resolved.include?(dependency)
+					puts "** Already resolved dependency!"
+					
+					return nil
+				end
+				
+				# The find_provider method is abstract in this base class.
+				provider = find_provider(dependency, parent)
+				
+				if provider == nil
+					puts "** Couldn't find_provider(#{dependency}, #{parent}) -> unresolved"
+					@unresolved << [dependency, parent]
+				else
+					expand_provider(provider, dependency, parent)
 				end
 			end
 		end
@@ -194,7 +198,7 @@ module Build
 				# Mostly, only one package will satisfy the dependency...
 				viable_providers = @providers.select{|provider| provider.provides? dependency}
 				
-				# puts "** Found #{viable_providers.collect(&:name).join(', ')} viable providers."
+				puts "** Found #{viable_providers.collect(&:name).join(', ')} viable providers."
 				
 				if viable_providers.size > 1
 					# ... however in some cases (typically where aliases are being used) an explicit selection must be made for the build to work correctly.
@@ -226,8 +230,8 @@ module Build
 				end
 			end
 			
-			def provisions_for(provider, dependency)
-				provider.provisions_for(dependency)
+			def provision_for(provider, dependency)
+				provider.provision_for(dependency)
 			end
 		end
 	end

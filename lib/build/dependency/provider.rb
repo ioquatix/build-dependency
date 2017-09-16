@@ -113,12 +113,12 @@ module Build
 				super
 			end
 			
-			# Assign a priority to this unit.
+			# Assign a priority.
 			def priority= value
 				@priority = value
 			end
 			
-			# The units default priority
+			# The default priority.
 			def priority
 				@priority ||= 0
 			end
@@ -142,16 +142,8 @@ module Build
 				end
 			end
 			
-			def provisions_for(dependency)
-				return to_enum(:provisions_for, dependency) unless block_given?
-				
-				if dependency.wildcard?
-					provisions.each do |key,value|
-						yield value if dependency.match?(key)
-					end
-				else
-					yield provisions[dependency.name]
-				end
+			def provision_for(dependency)
+				return provisions[dependency.name]
 			end
 			
 			# Add one or more provisions to the provider.
