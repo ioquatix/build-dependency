@@ -82,9 +82,9 @@ module Build
 				super(dependency, parent)
 			end
 			
-			def find_provider(dependency, parent)
-				if provider = @chain.resolved[dependency]
-					yield provider
+			def expand_dependency(dependency, parent)
+				if provision = @chain.resolved[dependency]
+					yield provision
 					return true
 				end
 				

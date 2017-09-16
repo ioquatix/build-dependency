@@ -123,9 +123,12 @@ module Build
 				end
 				
 				# The find_provider method is abstract in this base class.
-				find_provider(dependency, parent) do |provider, provision|
-					puts "** find_provider(#{dependency}, #{parent}) -> #{provider}"
-					expand_provider(provider, dependency, parent)
+				expand_dependency(dependency, parent) do |provision|
+					# We will now satisfy this dependency by satisfying any dependent dependencies, but we no longer need to revisit this one.
+					# puts "** Resolved #{dependency} (#{provision.inspect})"
+					@resolved[dependency] = provision
+					
+					expand_provision(provision, dependency)
 				end or begin
 					puts "** Couldn't find_provider(#{dependency}, #{parent}) -> unresolved"
 					@unresolved << [dependency, parent]
@@ -199,14 +202,18 @@ module Build
 				return viable_providers.select{|provider| @selection.include? provider.name}
 			end
 			
-			def find_provider(dependency, parent)
+			def expand_dependency(dependency, parent)
 				# Mostly, only one package will satisfy the dependency...
 				viable_providers = @providers.select{|provider| provider.provides? dependency}
 				
 				puts "** Found #{viable_providers.collect(&:name).join(', ')} viable providers."
 				
 				if viable_providers.size == 1
-					yield viable_providers.first
+					provider = viable_providers.first
+					provision = provision_for(provider, dependency)
+					
+					# The best outcome, a specific provider was named:
+					yield provision
 					
 					return true
 				elsif viable_providers.size > 1
@@ -226,8 +233,11 @@ module Build
 						# No provider was explicitly specified, thus we require explicit conflict resolution:
 						@conflicts[dependency] = viable_providers
 					elsif explicit_providers.size == 1
+						provider = explicit_providers.first
+						provision = provision_for(provider, dependency)
+						
 						# The best outcome, a specific provider was named:
-						yield explicit_providers.first
+						yield provision
 						
 						return true
 					else
