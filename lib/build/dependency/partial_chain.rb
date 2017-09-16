@@ -83,7 +83,12 @@ module Build
 			end
 			
 			def find_provider(dependency, parent)
-				@chain.resolved[dependency]
+				if provider = @chain.resolved[dependency]
+					yield provider
+					return true
+				end
+				
+				return false
 			end
 			
 			def provision_for(provider, dependency)

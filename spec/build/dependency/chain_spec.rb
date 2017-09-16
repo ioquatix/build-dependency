@@ -49,13 +49,13 @@ RSpec.describe Build::Dependency do
 		
 		it "should resolve direct dependency chain" do
 			chain = Build::Dependency::Chain.expand(['fruit-juice'], [a, b, c])
-			expect(chain.ordered.collect(&:first)).to be == [a, b, c]
+			expect(chain.ordered.collect(&:provider)).to be == [a, b, c]
 			expect(chain.unresolved).to be == []
 		end
 		
 		it "should resolve wildcard dependency chain" do
 			chain = Build::Dependency::Chain.expand(['fruit-*'], [a, b, c])
-			expect(chain.ordered.collect(&:first)).to be == [a, b, c]
+			expect(chain.ordered.collect(&:provider)).to be == [a, b, c]
 			expect(chain.unresolved).to be == []
 		end
 		
@@ -70,7 +70,7 @@ RSpec.describe Build::Dependency do
 			chain = Build::Dependency::Chain.expand(['pie'], [a, b, c, d])
 			
 			expect(chain.unresolved).to be == []
-			expect(chain.ordered.collect(&:first)).to be == [a, d]
+			expect(chain.ordered.collect(&:provider)).to be == [a, d]
 		end
 		
 		it "should format nicely" do
@@ -162,8 +162,8 @@ RSpec.describe Build::Dependency do
 		expect(chain.conflicts).to be == {}
 		
 		expect(chain.ordered.size).to be == 2
-		expect(chain.ordered[0]).to be == Build::Dependency::Resolution.new(apple, Build::Dependency::Depends.new("apple"))
-		expect(chain.ordered[1]).to be == Build::Dependency::Resolution.new(salad, Build::Dependency::Depends.new("salad"))
+		expect(chain.ordered[0].provider).to be == apple
+		expect(chain.ordered[1].provider).to be == salad
 	end
 	
 	it "should select dependencies with high priority" do
@@ -181,7 +181,9 @@ RSpec.describe Build::Dependency do
 		expect(chain.conflicts).to be == {}
 		
 		# Should select higher priority package by default:
-		expect(chain.ordered).to be == [Build::Dependency::Resolution.new(good_apple, Build::Dependency::Depends.new('apple'))]
+		expect(chain.ordered).to be == [good_apple.resolution_for(
+			Build::Dependency::Depends['apple']
+		)]
 	end
 	
 	it "should expose direct dependencies" do
@@ -206,9 +208,9 @@ RSpec.describe Build::Dependency do
 		expect(chain.unresolved).to be == []
 		expect(chain.conflicts).to be == {}
 		expect(chain.ordered).to be == [
-			Build::Dependency::Resolution.new(system, Build::Dependency::Depends.new('clang')),
-			Build::Dependency::Resolution.new(library, Build::Dependency::Depends.new('library')),
-			Build::Dependency::Resolution.new(application, Build::Dependency::Depends.new('application')),
+			system.resolution_for(Build::Dependency::Depends.new('clang')),
+			library.resolution_for(Build::Dependency::Depends.new('library')),
+			application.resolution_for(Build::Dependency::Depends.new('application')),
 		]
 	end
 end

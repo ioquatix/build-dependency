@@ -47,9 +47,13 @@ module Build
 			end
 		end
 		
-		Resolution = Struct.new(:provider, :dependency) do
+		Resolution = Struct.new(:provision, :dependency) do
 			def name
 				dependency.name
+			end
+			
+			def provider
+				provision.provider
 			end
 			
 			def to_s
@@ -133,17 +137,21 @@ module Build
 				@dependencies ||= Set.new
 			end
 			
+			def filter(dependency)
+				provisions.select{|key,value| dependency.match?(key)}
+			end
+			
 			# Does this unit provide the named thing?
 			def provides?(dependency)
-				if dependency.wildcard?
-					provisions.keys.any?{|key| dependency.match?(key)}
-				else
-					provisions.key?(dependency.name)
-				end
+				provisions.key?(dependency.name)
 			end
 			
 			def provision_for(dependency)
 				return provisions[dependency.name]
+			end
+			
+			def resolution_for(dependency)
+				return Resolution.new(provision_for(dependency), dependency)
 			end
 			
 			# Add one or more provisions to the provider.

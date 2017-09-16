@@ -36,7 +36,7 @@ RSpec.describe Build::Dependency do
 		
 		it "should resolve all tests" do
 			chain = Build::Dependency::Chain.expand(['Test/*'], [a, b])
-			expect(chain.ordered.collect(&:first)).to be == [a, b]
+			expect(chain.ordered.collect(&:provider)).to be == [a, b]
 			expect(chain.unresolved).to be == []
 		end
 	end

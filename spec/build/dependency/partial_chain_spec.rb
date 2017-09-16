@@ -26,11 +26,11 @@ RSpec.describe Build::Dependency::PartialChain do
 		
 		it "should generate full list of ordered providers" do
 			expect(chain.ordered).to be == [
-				Build::Dependency::Resolution.new(variant, Build::Dependency::Depends.new('Variant/debug')),
-				Build::Dependency::Resolution.new(platform, Build::Dependency::Depends.new('Platform/linux')),
-				Build::Dependency::Resolution.new(compiler, Build::Dependency::Depends.new("Language/C++17")),
-				Build::Dependency::Resolution.new(lib, Build::Dependency::Depends.new('lib')),
-				Build::Dependency::Resolution.new(app, Build::Dependency::Depends.new('app')),
+				variant.resolution_for(Build::Dependency::Depends.new('Variant/debug')),
+				platform.resolution_for(Build::Dependency::Depends.new('Platform/linux')),
+				compiler.resolution_for(Build::Dependency::Depends.new("Language/C++17")),
+				lib.resolution_for(Build::Dependency::Depends.new('lib')),
+				app.resolution_for(Build::Dependency::Depends.new('app')),
 			]
 		end
 		
@@ -53,10 +53,10 @@ RSpec.describe Build::Dependency::PartialChain do
 		
 		it "should select app packages" do
 			expect(subject.ordered).to be == [
-				Build::Dependency::Resolution.new(variant, Build::Dependency::Depends.new('Variant/debug')),
-				Build::Dependency::Resolution.new(platform, Build::Dependency::Depends.new('Platform/linux')),
-				Build::Dependency::Resolution.new(lib, Build::Dependency::Depends.new('lib')),
-				Build::Dependency::Resolution.new(compiler, Build::Dependency::Depends.new("Language/C++14")),
+				variant.resolution_for(Build::Dependency::Depends.new('Variant/debug')),
+				platform.resolution_for(Build::Dependency::Depends.new('Platform/linux')),
+				lib.resolution_for(Build::Dependency::Depends.new('lib')),
+				compiler.resolution_for(Build::Dependency::Depends.new("Language/C++14")),
 			]
 			
 			graph = visualization.generate(subject)
@@ -98,19 +98,19 @@ RSpec.describe Build::Dependency::PartialChain do
 		it "should include direct private dependencies" do
 			partial_chain = chain.partial(b)
 			
-			expect(partial_chain.ordered.collect(&:first)).to be == [a]
+			expect(partial_chain.ordered.collect(&:provider)).to be == [a]
 		end
 		
 		it "shouldn't include nested private dependencies" do
 			partial_chain = chain.partial(c)
 			
-			expect(partial_chain.ordered.collect(&:first)).to be == [b]
+			expect(partial_chain.ordered.collect(&:provider)).to be == [b]
 		end
 		
 		it "should follow non-private dependencies" do
 			partial_chain = chain.partial(d)
 			
-			expect(partial_chain.ordered.collect(&:first)).to be == [b, c]
+			expect(partial_chain.ordered.collect(&:provider)).to be == [b, c]
 		end
 	end
 end

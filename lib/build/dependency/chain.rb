@@ -76,6 +76,12 @@ module Build
 				
 				provision = provision_for(provider, dependency)
 				
+				expand_provision(provision, dependency)
+			end
+			
+			def expand_provision(provision, dependency)
+				provider = provision.provider
+				
 				# If the provision was an Alias, make sure to resolve the alias first:
 				if provision.alias?
 					# puts "** Resolving alias #{provision} (#{provision.dependencies.inspect})"
@@ -93,7 +99,7 @@ module Build
 					# puts "** Appending #{dependency} -> ordered"
 					
 					# Add the provider to the ordered list.
-					@ordered << Resolution.new(provider, dependency)
+					@ordered << Resolution.new(provision, dependency)
 				end
 				
 				# This goes here because we want to ensure 1/ that if 
@@ -117,13 +123,12 @@ module Build
 				end
 				
 				# The find_provider method is abstract in this base class.
-				provider = find_provider(dependency, parent)
-				
-				if provider == nil
+				find_provider(dependency, parent) do |provider, provision|
+					puts "** find_provider(#{dependency}, #{parent}) -> #{provider}"
+					expand_provider(provider, dependency, parent)
+				end or begin
 					puts "** Couldn't find_provider(#{dependency}, #{parent}) -> unresolved"
 					@unresolved << [dependency, parent]
-				else
-					expand_provider(provider, dependency, parent)
 				end
 			end
 		end
@@ -200,7 +205,11 @@ module Build
 				
 				puts "** Found #{viable_providers.collect(&:name).join(', ')} viable providers."
 				
-				if viable_providers.size > 1
+				if viable_providers.size == 1
+					yield viable_providers.first
+					
+					return true
+				elsif viable_providers.size > 1
 					# ... however in some cases (typically where aliases are being used) an explicit selection must be made for the build to work correctly.
 					explicit_providers = filter_by_selection(viable_providers)
 					
@@ -216,18 +225,18 @@ module Build
 					if explicit_providers.size == 0
 						# No provider was explicitly specified, thus we require explicit conflict resolution:
 						@conflicts[dependency] = viable_providers
-						return nil
 					elsif explicit_providers.size == 1
 						# The best outcome, a specific provider was named:
-						return explicit_providers.first
+						yield explicit_providers.first
+						
+						return true
 					else
 						# Multiple providers were explicitly mentioned that satisfy the dependency.
 						@conflicts[dependency] = explicit_providers
-						return nil
 					end
-				else
-					return viable_providers.first
 				end
+				
+				return false
 			end
 			
 			def provision_for(provider, dependency)
