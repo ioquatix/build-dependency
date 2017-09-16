@@ -88,6 +88,7 @@ module Build
 				return viable_providers.select{|provider| @selection.include? provider.name}
 			end
 			
+			# Given a dependency with wildcards, figure out all names that might match, and then expand them all individually.
 			def expand_wildcard(dependency, parent)
 				@providers.flat_map do |provider|
 					provider.filter(dependency).flat_map do |name, provision|
@@ -96,8 +97,10 @@ module Build
 				end
 			end
 			
-			# Resolve a dependency into one or more provisions:
+			# Resolve a dependency into one or more provisions.
 			def expand_dependency(dependency, parent)
+				# The job of this function is to take a dependency and turn it into 0 or more provisions. The dependency could be a normal fully-qualified name or a wildcard. It's not clear at which point pattern matching should affect dependency resolution, but it seems logical since it depends on the available provisions that it's done here.
+				# Another benefit is that it introduces a fixed point of reference for expanding dependencies. When the resolver invokes this method, it can be assured that it will return the same result.
 				if dependency.wildcard?
 					return expand_wildcard(dependency, parent)
 				end
