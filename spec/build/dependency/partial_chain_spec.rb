@@ -48,7 +48,7 @@ RSpec.describe Build::Dependency::PartialChain do
 			
 			graph = visualization.generate(chain)
 			
-			Graphviz::output(graph, path: "full.svg")
+			Graphviz.output(graph, path: "full.svg", format: 'svg')
 		end
 		
 		subject {described_class.new(chain, app.dependencies)}
@@ -63,7 +63,7 @@ RSpec.describe Build::Dependency::PartialChain do
 			
 			graph = visualization.generate(subject)
 			
-			Graphviz::output(graph, path: "partial.svg")
+			Graphviz.output(graph, path: "partial.svg", format: 'svg')
 		end
 	end
 	

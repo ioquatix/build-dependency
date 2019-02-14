@@ -28,6 +28,6 @@ RSpec.describe Build::Dependency::Visualization do
 		
 		graph = subject.generate(chain)
 		
-		Graphviz::output(graph, path: "visualization.svg")
+		Graphviz.output(graph, path: "visualization.svg", format: 'svg')
 	end
 end
