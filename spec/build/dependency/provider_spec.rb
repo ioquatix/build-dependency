@@ -26,7 +26,7 @@ RSpec.describe Build::Dependency::Provider do
 	let(:provider) do
 		Package.new("test").tap do |package|
 			package.depends "a", private: true
-			package.depends "b"
+			package.depends "b", public: true
 			package.depends :variant
 			
 			package.provides "c" do
@@ -62,7 +62,7 @@ RSpec.describe Build::Dependency::Provider do
 	end
 	
 	describe Build::Dependency::Depends do
-		subject {provider.dependencies.first}
+		subject {provider.dependencies["a"]}
 		
 		it "should have a name" do
 			expect(subject.name).to be == "a"
@@ -74,6 +74,38 @@ RSpec.describe Build::Dependency::Provider do
 		
 		it "should format nicely" do
 			expect(subject.to_s).to be == 'depends on "a" {:private=>true}'
+		end
+		
+		it "should be private" do
+			expect(subject).to be_private
+		end
+		
+		it "should not be public" do
+			expect(subject).to_not be_public
+		end
+	end
+	
+	describe Build::Dependency::Depends do
+		subject {provider.dependencies["b"]}
+		
+		it "should be public" do
+			expect(subject).to be_public
+		end
+		
+		it "should not be private" do
+			expect(subject).to_not be_private
+		end
+	end
+	
+	describe Build::Dependency::Depends do
+		subject {provider.dependencies[:variant]}
+		
+		it "should not be public" do
+			expect(subject).to_not be_public
+		end
+		
+		it "should not be private" do
+			expect(subject).to_not be_private
 		end
 	end
 	

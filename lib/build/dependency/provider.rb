@@ -102,8 +102,12 @@ module Build
 				end
 			end
 			
+			def public?
+				!!@options[:public]
+			end
+			
 			def private?
-				@options[:private]
+				!!@options[:private]
 			end
 			
 			def alias?
