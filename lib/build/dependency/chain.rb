@@ -20,6 +20,8 @@
 
 require_relative 'resolver'
 
+require 'set'
+
 module Build
 	module Dependency
 		class Chain < Resolver
@@ -40,7 +42,7 @@ module Build
 				super()
 				
 				# Explicitly selected dependencies which will be used when resolving ambiguity:
-				@selection = Set.new(selection)
+				@selection = ::Set.new(selection)
 				
 				# The list of dependencies that needs to be satisfied:
 				@dependencies = dependencies.collect{|dependency| Depends[dependency]}

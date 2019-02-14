@@ -18,7 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-require 'set'
+require_relative 'set'
 
 module Build
 	module Dependency
@@ -144,7 +144,7 @@ module Build
 				@provisions ||= {}
 			end
 			
-			# @return Set<Dependency>
+			# @return [IdentitySet<Dependency>]
 			def dependencies
 				@dependencies ||= Set.new
 			end
