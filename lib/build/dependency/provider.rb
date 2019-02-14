@@ -28,7 +28,7 @@ module Build
 		
 		# A provision is a thing which satisfies a dependency.
 		Provision = Struct.new(:name, :provider, :value) do
-			def each(&block)
+			def each_dependency(&block)
 				self.provider.dependencies.each(&block)
 			end
 			
@@ -42,7 +42,7 @@ module Build
 		end
 		
 		Alias = Struct.new(:name, :provider, :dependencies) do
-			def each(&block)
+			def each_dependency(&block)
 				return to_enum(&block) unless block_given?
 				
 				dependencies.each do |name|
