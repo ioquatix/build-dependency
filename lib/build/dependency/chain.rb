@@ -41,20 +41,20 @@ module Build
 			def initialize(dependencies, providers, selection = [])
 				super()
 				
-				# Explicitly selected dependencies which will be used when resolving ambiguity:
 				@selection = ::Set.new(selection)
-				
-				# The list of dependencies that needs to be satisfied:
 				@dependencies = dependencies.collect{|dependency| Depends[dependency]}
-				
-				# The available providers which match up to required dependencies:
 				@providers = providers
 				
 				expand_top
 			end
 			
+			# @attr [Set<String>] Explicitly selected dependencies which will be used when resolving ambiguity.
 			attr :selection
+			
+			# @attr [Array<Depends>] The list of dependencies that needs to be satisfied.
 			attr :dependencies
+			
+			# @attr [Array] The available providers which will be used to satisfy he required dependencies.
 			attr :providers
 			
 			def freeze

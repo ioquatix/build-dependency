@@ -43,7 +43,6 @@ module Build
 				
 				@chain = chain
 				
-				# The list of dependencies that needs to be satisfied:
 				@dependencies = dependencies.collect{|dependency| Depends[dependency]}
 				
 				expand_top
@@ -53,6 +52,7 @@ module Build
 				@chain.selection
 			end
 			
+			# @attr [Array<Depends>] The list of dependencies that needs to be satisfied.
 			attr :dependencies
 			
 			def providers
