@@ -73,11 +73,9 @@ module Build
 			end
 		end
 		
-		Depends = Struct.new(:name) do
+		Depends = Struct.new(:name, :options) do
 			def initialize(name, **options)
-				super(name)
-				
-				@options = options
+				super(name, options)
 			end
 			
 			def wildcard?
@@ -92,22 +90,20 @@ module Build
 				end
 			end
 			
-			attr :options
-			
 			def to_s
-				if @options.any?
-					"depends on #{name.inspect} #{@options.inspect}"
+				if options.any?
+					"depends on #{name.inspect} #{options.inspect}"
 				else
 					"depends on #{name.inspect}"
 				end
 			end
 			
 			def public?
-				!!@options[:public]
+				!!options[:public]
 			end
 			
 			def private?
-				!!@options[:private]
+				!!options[:private]
 			end
 			
 			def alias?

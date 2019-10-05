@@ -30,8 +30,8 @@ RSpec.describe Build::Dependency::PartialChain do
 			expect(chain.ordered).to be == [
 				variant.resolution_for(Build::Dependency::Depends.new('Variant/debug')),
 				platform.resolution_for(Build::Dependency::Depends.new('Platform/linux')),
-				compiler.resolution_for(Build::Dependency::Depends.new("Language/C++17")),
-				lib.resolution_for(Build::Dependency::Depends.new('lib')),
+				compiler.resolution_for(Build::Dependency::Depends.new("Language/C++17", private: true)),
+				lib.resolution_for(Build::Dependency::Depends.new('lib', private: true)),
 				app.resolution_for(Build::Dependency::Depends.new('app')),
 			]
 		end
@@ -40,10 +40,11 @@ RSpec.describe Build::Dependency::PartialChain do
 			expect(chain.provisions).to be == [
 				variant.provision_for(Build::Dependency::Depends.new('Variant/debug')),
 				platform.provision_for(Build::Dependency::Depends.new('Platform/linux')),
-				compiler.provision_for(Build::Dependency::Depends.new('Language/C++17')),
-				lib.provision_for(Build::Dependency::Depends.new('lib')),
-				compiler.provision_for(Build::Dependency::Depends.new('Language/C++14')),
+				compiler.provision_for(Build::Dependency::Depends.new('Language/C++17', private: true)),
+				lib.provision_for(Build::Dependency::Depends.new('lib', private: true)),
+				compiler.provision_for(Build::Dependency::Depends.new('Language/C++14', private: true)),
 				app.provision_for(Build::Dependency::Depends.new('app')),
+				lib.provision_for(Build::Dependency::Depends.new('lib')),
 			]
 			
 			graph = visualization.generate(chain)
@@ -57,8 +58,8 @@ RSpec.describe Build::Dependency::PartialChain do
 			expect(subject.ordered).to be == [
 				variant.resolution_for(Build::Dependency::Depends.new('Variant/debug')),
 				platform.resolution_for(Build::Dependency::Depends.new('Platform/linux')),
-				lib.resolution_for(Build::Dependency::Depends.new('lib')),
-				compiler.resolution_for(Build::Dependency::Depends.new("Language/C++14")),
+				lib.resolution_for(Build::Dependency::Depends.new('lib', private: true)),
+				compiler.resolution_for(Build::Dependency::Depends.new("Language/C++14", private: true)),
 			]
 			
 			graph = visualization.generate(subject)
