@@ -67,10 +67,6 @@ module Build
 				super
 			end
 			
-			def dependencies_by_name
-				@dependencies.map{|depends| [depends.name, depends]}.to_h
-			end
-			
 			protected
 			
 			def expand_top

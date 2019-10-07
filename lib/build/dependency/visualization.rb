@@ -75,7 +75,7 @@ module Build
 				graph = Graphviz::Graph.new
 				graph.attributes[:ratio] = :auto
 				
-				dependencies = chain.dependencies_by_name
+				dependencies = dependencies_by_name(chain.dependencies)
 				
 				chain.ordered.each do |resolution|
 					provider = resolution.provider
@@ -147,6 +147,12 @@ module Build
 				end
 				
 				return graph
+			end
+			
+			private
+			
+			def dependencies_by_name(dependencies)
+				dependencies.map{|depends| [depends.name, depends]}.to_h
 			end
 		end
 	end
