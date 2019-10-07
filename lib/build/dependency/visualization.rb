@@ -75,6 +75,8 @@ module Build
 				graph = Graphviz::Graph.new
 				graph.attributes[:ratio] = :auto
 				
+				dependencies = chain.dependencies_by_name
+				
 				chain.ordered.each do |resolution|
 					provider = resolution.provider
 					name = provider.name
@@ -82,7 +84,7 @@ module Build
 					# Provider is the dependency that provides the dependency referred to by name.
 					node = graph.add_node(name.to_s, @base_attributes.dup)
 					
-					if chain.dependencies.include?(resolution.dependency)
+					if dependencies.include?(resolution.dependency.name)
 						node.attributes.update(@dependency_attributes)
 					elsif chain.selection.include?(provider.name)
 						node.attributes.update(@selection_attributes)
