@@ -20,136 +20,85 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-require "graphviz"
-
 module Build
 	module Dependency
 		class Visualization
-			def initialize
-				@base_attributes = {
-					:shape => "box",
-					:style => "filled",
-					:fillcolor => "white",
-					:fontname => "Monaco",
-				}
-				
-				@provision_attributes = @base_attributes.dup
-				
-				@alias_attributes = @base_attributes.merge(
-					:fillcolor => "lightgrey",
-				)
-				
-				@dependency_attributes = @base_attributes.merge(
-					:fillcolor => "orange",
-				)
-				
-				@selection_attributes = {
-					:fillcolor => "lightbrown",
-				}
-				
-				@private_edge_attributes = {
-					:arrowhead => "empty",
-					:color => "#0000005f"
-				}
-				
-				@provider_attributes = {
-					:fillcolor => "lightblue",
-				}
-				
-				@provider_edge_attributes = {
-					:arrowhead => "none",
-				}
+			def sanitize_id(name)
+				# Convert name to a valid Mermaid node ID
+				name.to_s.gsub(/[^a-zA-Z0-9_]/, "_")
 			end
 			
-			attr :base_attributes
-			attr :provision_attributes
-			
-			attr :provider_attributes
-			attr :provider_edge_attributes
-			
-			attr :alias_attributes
-			
-			attr :dependency_attributes
-			attr :selection_attributes
-			attr :private_edge_attributes
-			
 			def generate(chain)
-				graph = Graphviz::Graph.new
-				graph.attributes[:ratio] = :auto
+				lines = ["flowchart LR"]
 				
-				dependencies = dependencies_by_name(chain.dependencies)
+				# Track nodes and their styles
+				nodes = {}
+				providers = ::Set.new
+				provisions_in_chain = ::Set.new
 				
+				# Collect all provisions in the chain
+				chain.provisions.each do |provision|
+					provisions_in_chain.add(provision.name.to_s)
+				end
+				
+				# Build the graph
 				chain.ordered.each do |resolution|
 					provider = resolution.provider
-					name = provider.name
+					name = provider.name.to_s
+					node_id = sanitize_id(name)
 					
-					# Provider is the dependency that provides the dependency referred to by name.
-					node = graph.add_node(name.to_s)
-					node.attributes.update(@base_attributes.dup)
+					# Track this node
+					nodes[name] = node_id
 					
 					# A provision has dependencies...
 					provider.dependencies.each do |dependency|
-						if dependency_node = graph.nodes[dependency.name.to_s]
-							edge = node.connect(dependency_node)
-							
-							if dependency.private?
-								edge.attributes.update(@private_edge_attributes)
-							end
+						dep_name = dependency.name.to_s
+						dep_id = sanitize_id(dep_name)
+						
+						nodes[dep_name] ||= dep_id
+						
+						# Create edge from provider to dependency
+						if dependency.private?
+							lines << "    #{node_id}[#{name}] -.-> #{dep_id}[#{dep_name}]"
+						else
+							lines << "    #{node_id}[#{name}] --> #{dep_id}[#{dep_name}]"
 						end
 					end
 					
 					# A provision provides other provisions...
 					provider.provisions.each do |provision_name, provision|
-						next if name == provision_name
+						next if name == provision_name.to_s
 						
-						provides_node = graph.nodes[provision_name.to_s]
-						if !provides_node
-							provides_node = graph.add_node(provision_name.to_s)
-							provides_node.attributes.update(@provision_attributes)
-						end
+						provision_str = provision_name.to_s
+						provision_id = sanitize_id(provision_str)
 						
-						node.attributes.update(@provider_attributes)
+						nodes[provision_str] ||= provision_id
 						
-						unless provides_node.connected?(node)
-							edge = provides_node.connect(node)
-							
-							edge.attributes.update(@provider_edge_attributes)
-						end
+						# Mark this node as a provider
+						providers.add(name)
+						
+						# Create edge from provision to provider (undirected)
+						lines << "    #{provision_id}[#{provision_str}] --- #{node_id}[#{name}]"
 					end
 				end
 				
-				chain.provisions.each do |provision|
-					node = graph.nodes[provision.name.to_s]
-					
-					node.attributes.update(penwidth: 2.0)
+				# Add styling
+				lines << ""
+				lines << "    %% Styles"
+				
+				# Style providers with light blue
+				providers.each do |name|
+					lines << "    style #{sanitize_id(name)} fill:#add8e6"
 				end
 				
-				# Put all dependencies at the same level so as to not make the graph too confusingraph.
-				done = Set.new
-				chain.ordered.each do |resolution|
-					provider = resolution.provider
-					name = "subgraph-#{provider.name}"
-					
-					subgraph = graph.nodes[name] || graph.add_subgraph(name, :rank => :same)
-					
-					provider.dependencies.each do |dependency|
-						next if done.include? dependency
-						
-						done << dependency
-						
-						if dependency_node = graph.nodes[dependency.name.to_s]
-							subgraph.add_node(dependency_node.name)
-						end
+				# Highlight provisions in the chain with a thicker border
+				provisions_in_chain.each do |name|
+					if node_id = nodes[name]
+						lines << "    style #{node_id} stroke-width:3px"
 					end
 				end
 				
-				return graph
-			end
-			
-			private
-			
-			def dependencies_by_name(dependencies)
-				dependencies.map{|depends| [depends.name, depends]}.to_h
+				return lines.join("\n")
 			end
 		end
 	end

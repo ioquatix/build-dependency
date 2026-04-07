@@ -32,9 +32,8 @@ describe Build::Dependency::PartialChain do
 				lib.provision_for(Build::Dependency::Depends.new("lib")),
 			]
 			
-			graph = visualization.generate(chain)
-			
-			Graphviz.output(graph, path: "full.svg", format: "svg")
+			# Generate mermaid diagram
+			expect(visualization.generate(chain)).to be_a(String)
 		end
 		
 		let(:subject) {Build::Dependency::PartialChain.new(chain, app.dependencies)}
@@ -47,9 +46,8 @@ describe Build::Dependency::PartialChain do
 				compiler.resolution_for(Build::Dependency::Depends.new("Language/C++14", private: true)),
 			]
 			
-			graph = visualization.generate(subject)
-			
-			Graphviz.output(graph, path: "partial.svg", format: "svg")
+			# Generate mermaid diagram
+			expect(visualization.generate(subject)).to be_a(String)
 		end
 	end
 	

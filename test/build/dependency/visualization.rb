@@ -13,8 +13,9 @@ describe Build::Dependency::Visualization do
 	it "should visualize dependency chain" do
 		chain = Build::Dependency::Chain.expand(["app", "tests"], packages)
 		
-		graph = subject.generate(chain)
+		mermaid = subject.generate(chain)
 		
-		Graphviz.output(graph, path: "visualization.svg", format: "svg")
+		expect(mermaid).to be_a(String)
+		expect(mermaid).to be(:include?, "flowchart")
 	end
 end
