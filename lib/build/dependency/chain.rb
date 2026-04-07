@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Released under the MIT License.
-# Copyright, 2017-2019, by Samuel Williams.
+# Copyright, 2017-2026, by Samuel Williams.
 
 require_relative "resolver"
 
@@ -9,6 +9,7 @@ require "set"
 
 module Build
 	module Dependency
+		# A chain of dependencies that are resolved from a set of providers.
 		class Chain < Resolver
 			# An `UnresolvedDependencyError` will be thrown if there are any unresolved dependencies.
 			def self.expand(*args)
@@ -23,6 +24,10 @@ module Build
 				return chain
 			end
 			
+			# Initialize a dependency chain.
+			# @parameter dependencies [Array<String, Depends>] The dependencies to resolve.
+			# @parameter providers [Array<Provider>] The providers to use for resolution.
+			# @parameter selection [Array<String>] Explicitly selected dependencies for resolving ambiguity.
 			def initialize(dependencies, providers, selection = [])
 				super()
 				
@@ -42,6 +47,7 @@ module Build
 			# @attr [Array] The available providers which will be used to satisfy he required dependencies.
 			attr :providers
 			
+			# Freeze the chain and all its dependencies.
 			def freeze
 				return self if frozen?
 				

@@ -1,13 +1,16 @@
 # frozen_string_literal: true
 
 # Released under the MIT License.
-# Copyright, 2017, by Samuel Williams.
+# Copyright, 2017-2026, by Samuel Williams.
 
 require "set"
 
 module Build
 	module Dependency
+		# An error raised when dependencies cannot be resolved.
 		class UnresolvedDependencyError < StandardError
+			# Initialize the error with the unresolved chain.
+			# @parameter chain [Chain] The chain with unresolved dependencies.
 			def initialize(chain)
 				super "Unresolved dependency chain: #{chain.unresolved.inspect}!"
 				
@@ -19,7 +22,9 @@ module Build
 		
 		TOP = Depends.new("<top>").freeze
 		
+		# Base class for resolving dependencies.
 		class Resolver
+			# Initialize an empty resolver.
 			def initialize
 				@resolved = {}
 				@ordered = []
@@ -34,6 +39,7 @@ module Build
 			attr :unresolved
 			attr :conflicts
 			
+			# Freeze the resolver and all its internal state.
 			def freeze
 				return self if frozen?
 				

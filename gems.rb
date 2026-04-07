@@ -1,5 +1,8 @@
 # frozen_string_literal: true
 
+# Released under the MIT License.
+# Copyright, 2017-2026, by Samuel Williams.
+
 source "https://rubygems.org"
 
 # Specify your gem's dependencies in build-dependency.gemspec
