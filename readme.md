@@ -24,7 +24,9 @@ Please see the [project documentation](https://ioquatix.github.io/build-dependen
 
 Please see the [project releases](https://ioquatix.github.io/build-dependency/releases/index) for all releases.
 
-### Unreleased
+### v1.6.0
+
+  - Change visualization to use Mermaid flowcharts for better readability and diagram generation.
 
 ## See Also
 
