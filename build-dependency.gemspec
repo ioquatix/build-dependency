@@ -1,24 +1,21 @@
-# coding: utf-8
-require_relative 'lib/build/dependency/version'
+# frozen_string_literal: true
+
+require_relative "lib/build/dependency/version"
 
 Gem::Specification.new do |spec|
-	spec.name          = "build-dependency"
-	spec.version       = Build::Dependency::VERSION
-	spec.authors       = ["Samuel Williams"]
-	spec.email         = ["samuel.williams@oriontransfer.co.nz"]
-	spec.summary       = %q{A set of data structures and algorithms for dependency resolution.}
-	spec.homepage      = ""
-	spec.license       = "MIT"
-
-	spec.files         = `git ls-files -z`.split("\x0")
-	spec.executables   = spec.files.grep(%r{^bin/}) { |f| File.basename(f) }
-	spec.test_files    = spec.files.grep(%r{^(test|spec|features)/})
-	spec.require_paths = ["lib"]
+	spec.name = "build-dependency"
+	spec.version = Build::Dependency::VERSION
+	
+	spec.summary = "A set of data structures and algorithms for dependency resolution."
+	spec.authors = ["Samuel Williams"]
+	spec.license = "MIT"
+	
+	spec.cert_chain  = ["release.cert"]
+	spec.signing_key = File.expand_path("~/.gem/release.pem")
+	
+	spec.files = Dir.glob(["{lib,test}/**/*", "*.md"], File::FNM_DOTMATCH, base: __dir__)
+	
+	spec.required_ruby_version = ">= 3.3"
 	
 	spec.add_dependency "graphviz"
-	
-	spec.add_development_dependency "covered"
-	spec.add_development_dependency "bundler"
-	spec.add_development_dependency "rspec", "~> 3.8"
-	spec.add_development_dependency "rake"
 end

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Copyright, 20127, by Samuel G. D. Williams. <http://www.codeotaku.com>
 # 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -18,44 +20,44 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-require 'graphviz'
+require "graphviz"
 
 module Build
 	module Dependency
 		class Visualization
 			def initialize
 				@base_attributes = {
-					:shape => 'box',
-					:style => 'filled',
-					:fillcolor => 'white',
-					:fontname => 'Monaco',
+					:shape => "box",
+					:style => "filled",
+					:fillcolor => "white",
+					:fontname => "Monaco",
 				}
 				
 				@provision_attributes = @base_attributes.dup
 				
 				@alias_attributes = @base_attributes.merge(
-					:fillcolor => 'lightgrey',
+					:fillcolor => "lightgrey",
 				)
 				
 				@dependency_attributes = @base_attributes.merge(
-					:fillcolor => 'orange',
+					:fillcolor => "orange",
 				)
 				
 				@selection_attributes = {
-					:fillcolor => 'lightbrown',
+					:fillcolor => "lightbrown",
 				}
 				
 				@private_edge_attributes = {
-					:arrowhead => 'empty',
-					:color => '#0000005f'
+					:arrowhead => "empty",
+					:color => "#0000005f"
 				}
 				
 				@provider_attributes = {
-					:fillcolor => 'lightblue',
+					:fillcolor => "lightblue",
 				}
 				
 				@provider_edge_attributes = {
-					:arrowhead => 'none',
+					:arrowhead => "none",
 				}
 			end
 			
@@ -82,13 +84,8 @@ module Build
 					name = provider.name
 					
 					# Provider is the dependency that provides the dependency referred to by name.
-					node = graph.add_node(name.to_s, @base_attributes.dup)
-					
-					if dependencies.include?(resolution.dependency.name)
-						node.attributes.update(@dependency_attributes)
-					elsif chain.selection.include?(provider.name)
-						node.attributes.update(@selection_attributes)
-					end
+					node = graph.add_node(name.to_s)
+					node.attributes.update(@base_attributes.dup)
 					
 					# A provision has dependencies...
 					provider.dependencies.each do |dependency|
@@ -105,10 +102,10 @@ module Build
 					provider.provisions.each do |provision_name, provision|
 						next if name == provision_name
 						
-						provides_node = graph.nodes[provision_name.to_s] || graph.add_node(provision_name.to_s, @provision_attributes)
-						
-						if provision.alias?
-							provides_node.attributes = @alias_attributes
+						provides_node = graph.nodes[provision_name.to_s]
+						if !provides_node
+							provides_node = graph.add_node(provision_name.to_s)
+							provides_node.attributes.update(@provision_attributes)
 						end
 						
 						node.attributes.update(@provider_attributes)
